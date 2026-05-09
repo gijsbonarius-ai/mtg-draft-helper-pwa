@@ -1,0 +1,15 @@
+{
+  "name": "plant-identification-pwa",
+  "version": "1.0.0",
+  "description": "Plant identification app using Claude AI vision",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "express": "^4.18.2"
+  }
+}

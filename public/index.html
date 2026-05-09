@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#2d6a4f" />
+  <meta name="description" content="Identify any plant instantly with AI" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <title>PlantID – AI Plant Identifier</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">🌿</div>
+    <h1>PlantID</h1>
+    <p class="tagline">Point. Snap. Identify.</p>
+  </header>
+
+  <main>
+    <!-- Camera / upload area -->
+    <section class="capture-section" id="captureSection">
+      <div class="preview-area" id="previewArea">
+        <div class="placeholder" id="placeholder">
+          <span class="placeholder-icon">📷</span>
+          <span class="placeholder-text">Tap to take a photo or upload an image</span>
+        </div>
+        <img id="preview" alt="Plant preview" hidden />
+      </div>
+
+      <div class="actions">
+        <!-- Camera capture (mobile) -->
+        <label class="btn btn-primary" for="cameraInput">
+          <span class="btn-icon">📸</span> Take Photo
+          <input
+            type="file"
+            id="cameraInput"
+            accept="image/*"
+            capture="environment"
+            hidden
+          />
+        </label>
+
+        <!-- File upload (desktop / gallery) -->
+        <label class="btn btn-secondary" for="fileInput">
+          <span class="btn-icon">🖼️</span> Choose Image
+          <input type="file" id="fileInput" accept="image/*" hidden />
+        </label>
+      </div>
+    </section>
+
+    <!-- Identify button -->
+    <button class="btn btn-identify" id="identifyBtn" hidden>
+      <span class="btn-icon">🔍</span> Identify Plant
+    </button>
+
+    <!-- Results area -->
+    <section class="results-section" id="resultsSection" hidden>
+      <div class="results-header">
+        <h2>Identification Results</h2>
+        <button class="btn-icon-only" id="resetBtn" title="Start over">✕</button>
+      </div>
+      <div class="results-content" id="resultsContent"></div>
+      <div class="spinner" id="spinner" hidden></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Powered by <strong>Claude AI</strong> · Anthropic</p>
+  </footer>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
