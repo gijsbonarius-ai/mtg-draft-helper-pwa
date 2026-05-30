@@ -10,6 +10,7 @@ import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import Import from './pages/Import';
 import Analytics from './pages/Analytics';
+import Callback from './pages/Callback';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -42,6 +43,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login session={session} />} />
+        <Route path="/callback" element={<Callback />} />
         <Route element={<PrivateRoute session={session} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
