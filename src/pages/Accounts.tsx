@@ -9,11 +9,9 @@ interface BankConnection {
   last_synced_at: string | null;
 }
 
-// Build the TrueLayer OAuth URL for a given account.
-// Sandbox base: https://auth.truelayer-sandbox.com
-// Live base:    https://auth.truelayer.com  (change VITE_TRUELAYER_AUTH_BASE env var)
+// Build the TrueLayer OAuth URL for a given account (live endpoint).
 function buildTrueLayerAuthUrl(accountId: string): string {
-  const base = import.meta.env.VITE_TRUELAYER_AUTH_BASE ?? 'https://auth.truelayer-sandbox.com';
+  const base = 'https://auth.truelayer.com';
   const clientId = import.meta.env.VITE_TRUELAYER_CLIENT_ID ?? '';
   const redirectUri = import.meta.env.VITE_TRUELAYER_REDIRECT_URI ?? '';
   const providers = 'uk-ob-all uk-oauth-all de-ob-all nl-ob-all';
@@ -102,10 +100,13 @@ export default function Accounts() {
     setSyncError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data, error: fnError } = await supabase.functions.invoke('truelayer-sync', {
-        body: { account_id: accountId, user_id: user!.id },
+      const syncRes = await fetch('/api/truelayer-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_id: accountId, user_id: user!.id }),
       });
-      if (fnError || !data?.success) {
+      const data = await syncRes.json() as { success?: boolean; error?: string };
+      if (!syncRes.ok || !data?.success) {
         setSyncError('Sync failed. Please try again.');
       } else {
         await load();

@@ -24,12 +24,15 @@ export default function Callback() {
           return;
         }
 
-        const { data, error: fnError } = await supabase.functions.invoke('truelayer-exchange', {
-          body: { code, account_id: accountId, user_id: user.id },
+        const exchangeRes = await fetch('/api/truelayer-exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, account_id: accountId, user_id: user.id }),
         });
+        const data = await exchangeRes.json() as { success?: boolean; error?: string };
 
-        if (fnError || !data?.success) {
-          console.error('Exchange error:', fnError);
+        if (!exchangeRes.ok || !data?.success) {
+          console.error('Exchange error:', data?.error);
           setError('Something went wrong while connecting your bank. Please try again.');
           return;
         }
