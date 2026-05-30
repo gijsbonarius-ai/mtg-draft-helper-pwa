@@ -18,6 +18,10 @@ const FORMAT_LABELS: Record<BankFormat, string> = {
   rabobank: 'Rabobank (NL)',
   abnamro: 'ABN AMRO (NL)',
   degiro: 'DEGIRO Broker',
+  deutschebank: 'Deutsche Bank (DE)',
+  comdirect: 'Comdirect (DE)',
+  hsbc: 'HSBC (UK/NL)',
+  paypal: 'PayPal',
   generic: 'Generic CSV',
 };
 

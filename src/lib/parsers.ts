@@ -4,10 +4,14 @@ import type { BankFormat, ColumnMapping, ParsedTransaction } from './types';
 
 export function detectFormat(headers: string[]): BankFormat {
   const h = headers.map((x) => x.toLowerCase().trim());
-  if (h.includes('af/bij') || (h.includes('datum') && h.includes('naam / omschrijving'))) return 'ing';
+  if (h.includes('af/bij') || h.includes('af bij') || (h.includes('datum') && h.includes('naam / omschrijving'))) return 'ing';
   if (h.some((x) => x.includes('bedrag') && !x.includes('omschrijving')) && h.includes('iban/bban')) return 'rabobank';
-  if (h.includes('transactiedatum') || h.includes('omschrijving') && h.includes('transactiebedrag')) return 'abnamro';
+  if (h.includes('transactiedatum') || (h.includes('omschrijving') && h.includes('transactiebedrag'))) return 'abnamro';
   if (h.includes('product') && h.includes('isin') && h.includes('beurs')) return 'degiro';
+  if (h.includes('buchungstag') && (h.includes('soll') || h.includes('haben'))) return 'deutschebank';
+  if (h.includes('buchungstag') && h.includes('buchungstext') && h.includes('umsatz in eur')) return 'comdirect';
+  if (h.includes('date') && (h.includes('money out') || h.includes('money in') || (h.includes('debit') && h.includes('credit') && h.includes('balance')))) return 'hsbc';
+  if (h.includes('name') && h.includes('net') && h.includes('gross') && h.includes('currency')) return 'paypal';
   return 'generic';
 }
 
@@ -39,8 +43,18 @@ function parseDate(raw: string): string {
 }
 
 export function parseCSV(content: string, format: BankFormat, columnMapping?: ColumnMapping): ParsedTransaction[] {
-  const delimiter = format === 'rabobank' ? ';' : undefined;
-  const result = Papa.parse<Record<string, string>>(content, {
+  const semicolonFormats: BankFormat[] = ['rabobank', 'deutschebank', 'comdirect'];
+  const delimiter = semicolonFormats.includes(format) ? ';' : undefined;
+
+  // Skip metadata rows at top for Deutsche Bank and Comdirect
+  let csvContent = content;
+  if (format === 'deutschebank' || format === 'comdirect') {
+    const lines = content.split('\n');
+    const headerIdx = lines.findIndex((l) => l.toLowerCase().includes('buchungstag'));
+    if (headerIdx > 0) csvContent = lines.slice(headerIdx).join('\n');
+  }
+
+  const result = Papa.parse<Record<string, string>>(csvContent, {
     header: true,
     delimiter,
     skipEmptyLines: true,
@@ -49,14 +63,14 @@ export function parseCSV(content: string, format: BankFormat, columnMapping?: Co
   const rows = result.data;
 
   switch (format) {
-    case 'ing':
-      return parseING(rows);
-    case 'rabobank':
-      return parseRabobank(rows);
-    case 'abnamro':
-      return parseABNAMRO(rows);
-    case 'degiro':
-      return parseDEGIRO(rows);
+    case 'ing':        return parseING(rows);
+    case 'rabobank':   return parseRabobank(rows);
+    case 'abnamro':    return parseABNAMRO(rows);
+    case 'degiro':     return parseDEGIRO(rows);
+    case 'deutschebank': return parseDeutscheBank(rows);
+    case 'comdirect':  return parseComdirect(rows);
+    case 'hsbc':       return parseHSBC(rows);
+    case 'paypal':     return parsePayPal(rows);
     default:
       if (columnMapping) return parseGeneric(rows, columnMapping);
       return [];
@@ -66,7 +80,7 @@ export function parseCSV(content: string, format: BankFormat, columnMapping?: Co
 function parseING(rows: Record<string, string>[]): ParsedTransaction[] {
   return rows.map((row) => {
     const rawAmount = row['Bedrag (EUR)'] || row['Amount (EUR)'] || row['Bedrag'] || '0';
-    const direction = (row['Af/Bij'] || row['AF/BIJ'] || '').toLowerCase();
+    const direction = (row['Af/Bij'] || row['AF/BIJ'] || row['Af Bij'] || '').toLowerCase();
     let amount = parseAmount(rawAmount);
     if (direction === 'af' || direction === 'debit') amount = -Math.abs(amount);
     else amount = Math.abs(amount);
@@ -142,6 +156,84 @@ function parseDEGIRO(rows: Record<string, string>[]): ParsedTransaction[] {
         amount,
         category: 'Investment',
         type: (amount >= 0 ? 'income' : 'expense') as 'income' | 'expense',
+      };
+    });
+}
+
+function parseDeutscheBank(rows: Record<string, string>[]): ParsedTransaction[] {
+  return rows.map((row) => {
+    const debit = parseAmount(row['Soll'] || row['Debit'] || '0');
+    const credit = parseAmount(row['Haben'] || row['Credit'] || '0');
+    const amount = credit !== 0 ? Math.abs(credit) : -Math.abs(debit);
+    const description = row['Verwendungszweck'] || row['Purpose'] || row['Buchungstext'] || '';
+    const category = categorize(description);
+    const type: 'income' | 'expense' | 'transfer' =
+      category === 'Transfer' ? 'transfer' : amount >= 0 ? 'income' : 'expense';
+    return {
+      date: parseDate(row['Buchungstag'] || row['Wert'] || ''),
+      description,
+      amount,
+      category,
+      type,
+    };
+  });
+}
+
+function parseComdirect(rows: Record<string, string>[]): ParsedTransaction[] {
+  return rows
+    .filter((row) => row['Buchungstag'] && row['Buchungstag'].trim() !== '')
+    .map((row) => {
+      const rawAmount = row['Umsatz in EUR'] || row['Umsatz'] || '0';
+      // Comdirect uses + for credit, - for debit embedded in the amount string
+      const amount = parseAmount(rawAmount);
+      const description = row['Buchungstext'] || row['Vorgang'] || '';
+      const category = categorize(description);
+      const type: 'income' | 'expense' | 'transfer' =
+        category === 'Transfer' ? 'transfer' : amount >= 0 ? 'income' : 'expense';
+      return {
+        date: parseDate(row['Buchungstag'] || ''),
+        description,
+        amount,
+        category,
+        type,
+      };
+    });
+}
+
+function parseHSBC(rows: Record<string, string>[]): ParsedTransaction[] {
+  return rows.map((row) => {
+    const moneyOut = parseAmount(row['Money Out'] || row['Debit'] || '0');
+    const moneyIn = parseAmount(row['Money In'] || row['Credit'] || '0');
+    const amount = moneyIn !== 0 ? Math.abs(moneyIn) : -Math.abs(moneyOut);
+    const description = row['Description'] || row['Transaction Details'] || '';
+    const category = categorize(description);
+    const type: 'income' | 'expense' | 'transfer' =
+      category === 'Transfer' ? 'transfer' : amount >= 0 ? 'income' : 'expense';
+    return {
+      date: parseDate(row['Date'] || row['Transaction Date'] || ''),
+      description,
+      amount,
+      category,
+      type,
+    };
+  });
+}
+
+function parsePayPal(rows: Record<string, string>[]): ParsedTransaction[] {
+  return rows
+    .filter((row) => row['Date'] && row['Net'])
+    .map((row) => {
+      const amount = parseAmount(row['Net'] || '0');
+      const description = row['Name'] || row['Item Title'] || row['Subject'] || '';
+      const category = categorize(description);
+      const type: 'income' | 'expense' | 'transfer' =
+        category === 'Transfer' ? 'transfer' : amount >= 0 ? 'income' : 'expense';
+      return {
+        date: parseDate(row['Date'] || ''),
+        description,
+        amount,
+        category,
+        type,
       };
     });
 }

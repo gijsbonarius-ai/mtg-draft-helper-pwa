@@ -30,7 +30,7 @@ export interface ParsedTransaction {
   type: 'income' | 'expense' | 'transfer';
 }
 
-export type BankFormat = 'ing' | 'rabobank' | 'abnamro' | 'degiro' | 'generic';
+export type BankFormat = 'ing' | 'rabobank' | 'abnamro' | 'degiro' | 'deutschebank' | 'comdirect' | 'hsbc' | 'paypal' | 'generic';
 
 export interface ColumnMapping {
   date: string;
