@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+// This app is single-user. Registration is intentionally removed from the UI,
+// and new sign-ups are also disabled in the Supabase dashboard, so only the
+// existing owner account can sign in.
+
 interface Props {
   session: Session | null;
 }
@@ -11,10 +15,8 @@ export default function Login({ session }: Props) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (session) navigate('/', { replace: true });
@@ -24,18 +26,11 @@ export default function Login({ session }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
     try {
-      if (isRegister) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setMessage('Check your email for a confirmation link!');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate('/');
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -58,15 +53,10 @@ export default function Login({ session }: Props) {
         )}
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
-            {isRegister ? 'Create an account' : 'Sign in'}
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign in</h2>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>
-          )}
-          {message && (
-            <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-3 mb-4 text-sm">{message}</div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,19 +88,10 @@ export default function Login({ session }: Props) {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50"
             >
-              {loading ? 'Loading...' : isRegister ? 'Create Account' : 'Sign In'}
+              {loading ? 'Loading...' : 'Sign In'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-5">
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => { setIsRegister(!isRegister); setError(''); setMessage(''); }}
-              className="text-blue-600 hover:underline font-medium"
-            >
-              {isRegister ? 'Sign in' : 'Register'}
-            </button>
-          </p>
         </div>
       </div>
     </div>
