@@ -1,40 +1,26 @@
-export interface Account {
-  id: string;
-  user_id: string;
+export type PlayerKey = 'player1' | 'player2';
+
+export interface PlayerState {
   name: string;
-  type: 'bank' | 'investment' | 'credit_card';
-  currency: string;
-  balance: number;
-  institution?: string;
-  color?: string;
-  created_at: string;
+  picks: string[];
 }
 
-export interface Transaction {
+export interface DraftState {
+  phase: 'waiting' | 'drafting' | 'done';
+  deck: string[];
+  piles: string[][];
+  players: {
+    player1: PlayerState;
+    player2: PlayerState;
+  };
+  currentPlayer: PlayerKey;
+  currentPileIndex: number;
+}
+
+export interface DraftSession {
   id: string;
-  user_id: string;
-  account_id: string;
-  date: string;
-  description: string;
-  amount: number;
-  category?: string;
-  type: 'income' | 'expense' | 'transfer';
+  room_code: string;
+  state: DraftState;
   created_at: string;
-}
-
-export interface ParsedTransaction {
-  date: string;
-  description: string;
-  amount: number;
-  category?: string;
-  type: 'income' | 'expense' | 'transfer';
-}
-
-export type BankFormat = 'ing' | 'rabobank' | 'abnamro' | 'degiro' | 'deutschebank' | 'comdirect' | 'hsbc' | 'paypal' | 'generic';
-
-export interface ColumnMapping {
-  date: string;
-  description: string;
-  amount: string;
-  type?: string;
+  updated_at: string;
 }
