@@ -1,0 +1,261 @@
+import type { GameState, PlayerKey, GameStep, PlayerGameState } from './gameTypes';
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function clone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v));
+}
+
+function mkPlayer(deck: string[]): PlayerGameState {
+  const lib = shuffle(deck);
+  return {
+    life: 20,
+    poison: 0,
+    library: lib,
+    hand: [],
+    battlefield: [],
+    graveyard: [],
+    exile: [],
+    ready: false,
+  };
+}
+
+function addLog(state: GameState, msg: string): void {
+  state.log = [...state.log.slice(-19), msg];
+}
+
+export function initGame(p1Deck: string[], p2Deck: string[]): GameState {
+  return {
+    phase: 'setup',
+    turn: 1,
+    activePlayer: 'player1',
+    step: 'main1',
+    players: {
+      player1: mkPlayer(p1Deck),
+      player2: mkPlayer(p2Deck),
+    },
+    log: ['Game created. Draw your opening hands.'],
+    winner: undefined,
+  };
+}
+
+export function drawOpeningHand(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  p.hand = p.library.splice(0, 7);
+  addLog(s, `${player} drew opening hand.`);
+  return s;
+}
+
+export function mulligan(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  p.library = shuffle([...p.library, ...p.hand]);
+  const newCount = Math.max(p.hand.length - 1, 1);
+  p.hand = p.library.splice(0, newCount);
+  addLog(s, `${player} mulliganed to ${newCount}.`);
+  return s;
+}
+
+export function keepHand(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  s.players[player].ready = true;
+  const bothReady = s.players.player1.ready && s.players.player2.ready;
+  if (bothReady) {
+    s.phase = 'playing';
+    addLog(s, 'Both players kept. Game begins!');
+  } else {
+    addLog(s, `${player} kept their hand.`);
+  }
+  return s;
+}
+
+export function drawCard(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  if (p.library.length === 0) {
+    addLog(s, `${player} tried to draw but library is empty!`);
+    return s;
+  }
+  p.hand.push(p.library.shift()!);
+  addLog(s, `${player} drew a card.`);
+  return s;
+}
+
+export function playCard(state: GameState, player: PlayerKey, handIdx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.hand.splice(handIdx, 1);
+  p.battlefield.push({
+    uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name: card,
+    tapped: false,
+    counters: 0,
+    isToken: false,
+    note: '',
+  });
+  addLog(s, `${player} played ${card}.`);
+  return s;
+}
+
+export function discardCard(state: GameState, player: PlayerKey, handIdx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.hand.splice(handIdx, 1);
+  p.graveyard.push(card);
+  addLog(s, `${player} discarded ${card}.`);
+  return s;
+}
+
+export function tapToggle(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.tapped = !card.tapped;
+  return s;
+}
+
+export function untapAll(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  s.players[player].battlefield.forEach(c => { c.tapped = false; });
+  return s;
+}
+
+export function addCounter(state: GameState, player: PlayerKey, uid: string, delta: number): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.counters += delta;
+  return s;
+}
+
+export function moveToGraveyard(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const idx = p.battlefield.findIndex(c => c.uid === uid);
+  if (idx >= 0) {
+    const [card] = p.battlefield.splice(idx, 1);
+    if (!card.isToken) p.graveyard.push(card.name);
+    addLog(s, `${card.name} → ${player}'s graveyard.`);
+  }
+  return s;
+}
+
+export function returnToHand(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const idx = p.battlefield.findIndex(c => c.uid === uid);
+  if (idx >= 0) {
+    const [card] = p.battlefield.splice(idx, 1);
+    if (!card.isToken) p.hand.push(card.name);
+  }
+  return s;
+}
+
+export function exileCard(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const idx = p.battlefield.findIndex(c => c.uid === uid);
+  if (idx >= 0) {
+    const [card] = p.battlefield.splice(idx, 1);
+    if (!card.isToken) p.exile.push(card.name);
+    addLog(s, `${card.name} → ${player}'s exile.`);
+  }
+  return s;
+}
+
+export function graveToHand(state: GameState, player: PlayerKey, idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.graveyard.splice(idx, 1);
+  p.hand.push(card);
+  addLog(s, `${card} returned from graveyard to ${player}'s hand.`);
+  return s;
+}
+
+export function createToken(state: GameState, player: PlayerKey, name: string): GameState {
+  const s = clone(state);
+  s.players[player].battlefield.push({
+    uid: `token-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name,
+    tapped: false,
+    counters: 0,
+    isToken: true,
+    note: '',
+  });
+  addLog(s, `${player} created ${name} token.`);
+  return s;
+}
+
+export function adjustLife(state: GameState, player: PlayerKey, delta: number): GameState {
+  const s = clone(state);
+  s.players[player].life += delta;
+  if (s.players[player].life <= 0 && s.phase === 'playing') {
+    s.phase = 'ended';
+    s.winner = player === 'player1' ? 'player2' : 'player1';
+    addLog(s, `${player} reached 0 life. ${s.winner} wins!`);
+  }
+  return s;
+}
+
+export function adjustPoison(state: GameState, player: PlayerKey, delta: number): GameState {
+  const s = clone(state);
+  s.players[player].poison += delta;
+  if (s.players[player].poison >= 10 && s.phase === 'playing') {
+    s.phase = 'ended';
+    s.winner = player === 'player1' ? 'player2' : 'player1';
+    addLog(s, `${player} has 10 poison. ${s.winner} wins!`);
+  }
+  return s;
+}
+
+const STEPS: GameStep[] = ['untap', 'upkeep', 'draw', 'main1', 'combat', 'main2', 'end'];
+
+export function nextStep(state: GameState): GameState {
+  const s = clone(state);
+  const idx = STEPS.indexOf(s.step);
+  if (idx < STEPS.length - 1) {
+    s.step = STEPS[idx + 1];
+    if (s.step === 'untap') {
+      untapAll(s, s.activePlayer);
+    }
+  } else {
+    // End of turn → next player
+    s.activePlayer = s.activePlayer === 'player1' ? 'player2' : 'player1';
+    s.step = 'untap';
+    s.turn++;
+    addLog(s, `Turn ${s.turn} — ${s.activePlayer}'s turn.`);
+    untapAll(s, s.activePlayer);
+  }
+  return s;
+}
+
+export function endTurn(state: GameState): GameState {
+  const s = clone(state);
+  s.activePlayer = s.activePlayer === 'player1' ? 'player2' : 'player1';
+  s.step = 'untap';
+  s.turn++;
+  s.players[s.activePlayer].battlefield.forEach(c => { c.tapped = false; });
+  addLog(s, `Turn ${s.turn} — ${s.activePlayer}'s turn.`);
+  return s;
+}
+
+export function concede(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  s.phase = 'ended';
+  s.winner = player === 'player1' ? 'player2' : 'player1';
+  addLog(s, `${player} conceded. ${s.winner} wins!`);
+  return s;
+}
+
+export function setNote(state: GameState, player: PlayerKey, uid: string, note: string): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.note = note;
+  return s;
+}

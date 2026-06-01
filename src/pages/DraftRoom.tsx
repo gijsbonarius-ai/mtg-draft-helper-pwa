@@ -285,11 +285,17 @@ export default function DraftRoom() {
             </p>
           </div>
         ) : isDone ? (
-          <div className="bg-green-950 border border-green-700 rounded-xl p-4 text-center">
+          <div className="bg-green-950 border border-green-700 rounded-xl p-4 text-center space-y-3">
             <p className="text-green-300 font-bold text-lg">Draft Complete!</p>
-            <p className="text-green-400 text-sm mt-1">
+            <p className="text-green-400 text-sm">
               {p1.name}: {p1.picks.length} cards · {p2.name}: {p2.picks.length} cards
             </p>
+            <button
+              onClick={() => navigate(`/game/${roomCode}`)}
+              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg"
+            >
+              ▶ Play with Drafted Decks
+            </button>
           </div>
         ) : (
           <div className={`rounded-xl p-3 text-center text-sm font-medium border ${
