@@ -13,9 +13,10 @@ function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
 }
 
-function mkPlayer(deck: string[]): PlayerGameState {
+function mkPlayer(name: string, deck: string[]): PlayerGameState {
   const lib = shuffle(deck);
   return {
+    name,
     life: 20,
     poison: 0,
     library: lib,
@@ -31,15 +32,15 @@ function addLog(state: GameState, msg: string): void {
   state.log = [...state.log.slice(-19), msg];
 }
 
-export function initGame(p1Deck: string[], p2Deck: string[]): GameState {
+export function initGame(p1Name: string, p1Deck: string[], p2Name: string, p2Deck: string[]): GameState {
   return {
     phase: 'setup',
     turn: 1,
     activePlayer: 'player1',
     step: 'main1',
     players: {
-      player1: mkPlayer(p1Deck),
-      player2: mkPlayer(p2Deck),
+      player1: mkPlayer(p1Name, p1Deck),
+      player2: mkPlayer(p2Name, p2Deck),
     },
     log: ['Game created. Draw your opening hands.'],
     winner: undefined,

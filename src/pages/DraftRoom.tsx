@@ -53,9 +53,9 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIn
       'border-gray-700'
     }`}>
       <div className="text-xs text-gray-400 font-medium">Pile {index + 1}</div>
-      <div className="relative w-28 h-40">
+      <div className="relative w-24 h-36 sm:w-28 sm:h-40">
         {cards.length === 0 ? (
-          <div className="w-28 h-40 border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center">
+          <div className="w-24 h-36 sm:w-28 sm:h-40 border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center">
             <span className="text-gray-600 text-xs">Empty</span>
           </div>
         ) : isViewing ? (
@@ -63,18 +63,18 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIn
             {cards.slice(0, 3).map((_, i) => (
               <div
                 key={i}
-                className="absolute bg-blue-950 border border-blue-800 rounded-lg w-28 h-40"
+                className="absolute bg-blue-950 border border-blue-800 rounded-lg w-24 h-36 sm:w-28 sm:h-40"
                 style={{ top: i * 3, left: i * 3, zIndex: i }}
               />
             ))}
-            <CardImage name={cards[0]} className="absolute w-28 h-40" style={{ zIndex: cards.length }} />
+            <CardImage name={cards[0]} className="absolute w-24 h-36 sm:w-28 sm:h-40" style={{ zIndex: cards.length }} />
           </>
         ) : (
           <>
             {cards.slice(0, 3).map((_, i) => (
               <CardBack
                 key={i}
-                className="absolute w-28 h-40"
+                className="absolute w-24 h-36 sm:w-28 sm:h-40"
                 style={{ top: i * 3, left: i * 3, zIndex: i }}
               />
             ))}
@@ -86,13 +86,13 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIn
         <div className="flex gap-2 mt-1">
           <button
             onClick={onTake}
-            className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="bg-green-600 hover:bg-green-500 active:bg-green-400 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors min-w-[4rem]"
           >
             Take
           </button>
           <button
             onClick={onPass}
-            className="bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="bg-gray-600 hover:bg-gray-500 active:bg-gray-400 text-white text-sm font-bold px-4 py-2.5 rounded-lg transition-colors min-w-[4rem]"
           >
             Pass
           </button>
@@ -107,9 +107,9 @@ function PileDetail({ cards }: { cards: string[] }) {
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
       <h3 className="text-sm font-medium text-gray-400 mb-3">Cards in this pile ({cards.length})</h3>
-      <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {cards.map((card, i) => (
-          <CardImage key={i} name={card} className="w-24 h-36 flex-shrink-0" />
+          <CardImage key={i} name={card} className="w-20 h-28 flex-shrink-0" />
         ))}
       </div>
     </div>

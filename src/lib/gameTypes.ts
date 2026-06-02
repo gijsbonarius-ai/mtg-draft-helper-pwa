@@ -12,6 +12,7 @@ export interface BattlefieldCard {
 }
 
 export interface PlayerGameState {
+  name: string;
   life: number;
   poison: number;
   library: string[];
