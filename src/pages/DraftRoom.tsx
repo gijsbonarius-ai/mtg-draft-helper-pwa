@@ -300,10 +300,10 @@ export default function DraftRoom() {
               {p1.name}: {p1.picks.length} cards · {p2.name}: {p2.picks.length} cards
             </p>
             <button
-              onClick={() => navigate(`/game/${roomCode}`)}
+              onClick={() => navigate(`/deckbuild/${roomCode}`)}
               className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-2 rounded-lg"
             >
-              ▶ Play with Drafted Decks
+              ▶ Build Your Deck
             </button>
           </div>
         ) : (

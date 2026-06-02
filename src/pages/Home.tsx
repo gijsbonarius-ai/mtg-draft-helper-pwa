@@ -13,7 +13,7 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [cardCount, setCardCount] = useState(360);
+  const [cardCount, setCardCount] = useState(90);
 
   if (!isSupabaseConfigured) {
     return (
@@ -112,7 +112,7 @@ export default function Home() {
           <div>
             <label className="block text-sm text-gray-400 mb-2">Cards in this draft</label>
             <div className="flex gap-2 flex-wrap">
-              {([180, 270, 360, 450, 540] as const).map(n => (
+              {([90, 180, 270, 360, 450, 540] as const).map(n => (
                 <button
                   key={n}
                   type="button"
@@ -123,7 +123,7 @@ export default function Home() {
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {n}{n === 360 ? ' ✓' : ''}
+                  {n}
                 </button>
               ))}
             </div>

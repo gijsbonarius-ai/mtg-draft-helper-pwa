@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Chat from '../components/Chat';
+import { ZoomOverlay } from '../components/CardZoom';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
@@ -20,13 +21,32 @@ const STEP_LABELS: Record<GameStep, string> = {
 
 function CardImage({ name, className = '' }: { name: string; className?: string }) {
   const [err, setErr] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
-  if (err) return (
-    <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 ${className}`}>
-      <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
-    </div>
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function startPress() { timer.current = setTimeout(() => setZoomed(true), 400); }
+  function endPress() { if (timer.current) clearTimeout(timer.current); }
+
+  return (
+    <>
+      {err ? (
+        <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 ${className}`}
+          onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress}
+          onTouchStart={startPress} onTouchEnd={endPress}>
+          <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
+        </div>
+      ) : (
+        <img src={src} alt={name} className={`rounded object-cover ${className}`} onError={() => setErr(true)}
+          onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress}
+          onTouchStart={startPress} onTouchEnd={endPress}
+          onContextMenu={e => { e.preventDefault(); setZoomed(true); }}
+          draggable={false}
+        />
+      )}
+      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
+    </>
   );
-  return <img src={src} alt={name} className={`rounded object-cover ${className}`} onError={() => setErr(true)} />;
 }
 
 function CardBack({ className = '' }: { className?: string }) {
@@ -325,9 +345,11 @@ export default function GameRoom() {
     if (!draft) { setError('Draft not found'); setLoading(false); return; }
 
     const ds = draft.state as DraftState;
+    const p1Deck = ds.deckBuilds?.player1 ?? ds.players.player1.picks;
+    const p2Deck = ds.deckBuilds?.player2 ?? ds.players.player2.picks;
     const gs = initGame(
-      ds.players.player1.name, ds.players.player1.picks,
-      ds.players.player2.name, ds.players.player2.picks,
+      ds.players.player1.name, p1Deck,
+      ds.players.player2.name, p2Deck,
     );
 
     const { error: err } = await supabase.from('game_sessions').insert({ room_code: roomCode, state: gs });

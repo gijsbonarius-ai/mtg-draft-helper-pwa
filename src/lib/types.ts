@@ -15,6 +15,10 @@ export interface DraftState {
   };
   currentPlayer: PlayerKey;
   currentPileIndex: number;
+  deckBuilds?: {
+    player1?: string[];
+    player2?: string[];
+  };
 }
 
 export interface DraftSession {
