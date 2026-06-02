@@ -9,6 +9,7 @@ export interface BattlefieldCard {
   counters: number;
   isToken: boolean;
   note: string;
+  isLand: boolean;
 }
 
 export interface PlayerGameState {

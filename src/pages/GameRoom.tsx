@@ -9,7 +9,7 @@ import {
   initGame, drawOpeningHand, mulligan, keepHand,
   drawCard, playCard, discardCard, tapToggle, addCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand,
-  createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
+  createToken, adjustLife, adjustPoison, nextStep, endTurn, concede, toggleLandRow,
 } from '../lib/gameLogic';
 
 const STEP_LABELS: Record<GameStep, string> = {
@@ -66,10 +66,11 @@ interface ActionSheetProps {
   onToGrave: () => void;
   onToHand: () => void;
   onExile: () => void;
+  onToggleLand: () => void;
   onClose: () => void;
 }
 
-function ActionSheet({ card, onTap, onCounter, onToGrave, onToHand, onExile, onClose }: ActionSheetProps) {
+function ActionSheet({ card, onTap, onCounter, onToGrave, onToHand, onExile, onToggleLand, onClose }: ActionSheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
       <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl p-4 space-y-2 shadow-2xl"
@@ -101,8 +102,12 @@ function ActionSheet({ card, onTap, onCounter, onToGrave, onToHand, onExile, onC
             className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-red-400 text-sm font-medium py-3 rounded-xl">
             💀 Graveyard
           </button>
+          <button onClick={onToggleLand}
+            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-yellow-400 text-sm font-medium py-3 rounded-xl">
+            {card.isLand ? '⬆ Move to Spells' : '⬇ Move to Lands'}
+          </button>
           <button onClick={onExile}
-            className="col-span-2 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-purple-400 text-sm font-medium py-3 rounded-xl">
+            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-purple-400 text-sm font-medium py-3 rounded-xl">
             ✦ Exile
           </button>
         </div>
@@ -152,34 +157,46 @@ interface BattlefieldProps {
   onOpenMenu: (card: BattlefieldCard) => void;
 }
 
-function Battlefield({ cards, isMe, onOpenMenu }: BattlefieldProps) {
+function BattlefieldRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
   return (
-    <div className="flex flex-wrap gap-2 p-2 min-h-[5rem]"
-      onClick={e => { if (e.target === e.currentTarget && isMe) { /* deselect */ } }}>
-      {cards.length === 0 && (
-        <div className="w-full flex items-center justify-center text-gray-700 text-xs italic py-2">
-          {isMe ? 'Battlefield (tap cards to open actions)' : 'Opponent\'s battlefield'}
+    <div className="min-h-[4rem]">
+      {cards.length === 0 ? (
+        <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 p-2">
+          {cards.map(card => (
+            <div
+              key={card.uid}
+              className={`relative flex-shrink-0 transition-transform ${card.tapped ? 'rotate-90 my-3 mx-2' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
+              onClick={() => isMe && onOpenMenu(card)}
+            >
+              <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+              {card.counters !== 0 && (
+                <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+                  {card.counters > 0 ? '+' : ''}{card.counters}
+                </span>
+              )}
+              {card.isToken && (
+                <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">token</span>
+              )}
+            </div>
+          ))}
         </div>
       )}
-      {cards.map(card => (
-        <div
-          key={card.uid}
-          className={`relative flex-shrink-0 transition-transform ${card.tapped ? 'rotate-90 my-3 mx-2' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
-          onClick={() => isMe && onOpenMenu(card)}
-        >
-          <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
-          {card.counters !== 0 && (
-            <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
-              {card.counters > 0 ? '+' : ''}{card.counters}
-            </span>
-          )}
-          {card.isToken && (
-            <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">
-              token
-            </span>
-          )}
-        </div>
-      ))}
+    </div>
+  );
+}
+
+function Battlefield({ cards, isMe, onOpenMenu }: BattlefieldProps) {
+  const spells = cards.filter(c => !c.isLand);
+  const lands = cards.filter(c => c.isLand);
+  return (
+    <div className="flex flex-col h-full">
+      <BattlefieldRow cards={spells} isMe={isMe} onOpenMenu={onOpenMenu}
+        label={isMe ? 'Spells (tap to open actions)' : 'Opponent spells'} />
+      <div className="border-t border-gray-800/60 mx-2" />
+      <BattlefieldRow cards={lands} isMe={isMe} onOpenMenu={onOpenMenu}
+        label={isMe ? 'Lands' : 'Opponent lands'} />
     </div>
   );
 }
@@ -654,6 +671,7 @@ export default function GameRoom() {
           onToGrave={() => { push(moveToGraveyard(state, me, cardMenu.uid)); setCardMenu(null); }}
           onToHand={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
           onExile={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
+          onToggleLand={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
           onClose={() => setCardMenu(null)}
         />
       )}

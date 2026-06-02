@@ -1,5 +1,13 @@
 import type { GameState, PlayerKey, GameStep, PlayerGameState } from './gameTypes';
 
+const BASIC_LANDS = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest',
+  'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp',
+  'Snow-Covered Mountain', 'Snow-Covered Forest']);
+
+function detectLand(name: string): boolean {
+  return BASIC_LANDS.has(name) || /\bland\b/i.test(name);
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -101,6 +109,7 @@ export function playCard(state: GameState, player: PlayerKey, handIdx: number): 
     counters: 0,
     isToken: false,
     note: '',
+    isLand: detectLand(card),
   });
   addLog(s, `${player} played ${card}.`);
   return s;
@@ -188,6 +197,7 @@ export function createToken(state: GameState, player: PlayerKey, name: string): 
     counters: 0,
     isToken: true,
     note: '',
+    isLand: false,
   });
   addLog(s, `${player} created ${name} token.`);
   return s;
@@ -251,6 +261,13 @@ export function concede(state: GameState, player: PlayerKey): GameState {
   s.phase = 'ended';
   s.winner = player === 'player1' ? 'player2' : 'player1';
   addLog(s, `${player} conceded. ${s.winner} wins!`);
+  return s;
+}
+
+export function toggleLandRow(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.isLand = !card.isLand;
   return s;
 }
 
