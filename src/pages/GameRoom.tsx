@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import Chat from '../components/Chat';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
@@ -621,6 +622,8 @@ export default function GameRoom() {
       )}
 
       {/* ── Overlays ── */}
+      {roomCode && me && <Chat roomCode={roomCode} playerName={myState?.name || me} />}
+
       {cardMenu && (
         <ActionSheet
           card={cardMenu}

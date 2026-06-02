@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ZoomableCard } from '../components/CardZoom';
+import Chat from '../components/Chat';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { joinDraft, takePile, passPile } from '../lib/winstonDraft';
@@ -378,6 +379,8 @@ export default function DraftRoom() {
           </div>
         )}
       </div>
+
+      {roomCode && <Chat roomCode={roomCode} playerName={playerName.current} />}
 
       {viewPile !== null && state && (
         <PileModal
