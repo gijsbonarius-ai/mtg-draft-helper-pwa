@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { initDraft } from '../lib/winstonDraft';
+import { CUBE_CARDS } from '../lib/cards';
+import type { DraftState } from '../lib/types';
 
 function generateRoomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -31,6 +33,33 @@ export default function Home() {
         </div>
       </div>
     );
+  }
+
+  async function handleSkipToDeckBuilder() {
+    if (!name.trim()) { setError('Enter your name'); return; }
+    setLoading(true); setError('');
+    try {
+      const roomCode = generateRoomCode();
+      const shuffled = [...CUBE_CARDS].sort(() => Math.random() - 0.5).slice(0, 60);
+      const state: DraftState = {
+        phase: 'done',
+        deck: [],
+        piles: [[], [], []],
+        players: {
+          player1: { name: name.trim(), picks: shuffled.slice(0, 30) },
+          player2: { name: 'Player 2', picks: shuffled.slice(30, 60) },
+        },
+        currentPlayer: 'player1',
+        currentPileIndex: 0,
+      };
+      const { error: err } = await supabase.from('draft_sessions').insert({ room_code: roomCode, state });
+      if (err) throw err;
+      localStorage.setItem(`draft_player_${roomCode}`, 'player1');
+      localStorage.setItem(`draft_name_${roomCode}`, name.trim());
+      navigate(`/deckbuild/${roomCode}`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally { setLoading(false); }
   }
 
   async function handleCreate() {
@@ -137,6 +166,14 @@ export default function Home() {
             className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-gray-900 font-bold py-3 rounded-lg transition-colors"
           >
             {loading ? 'Creating…' : 'Create New Draft'}
+          </button>
+
+          <button
+            onClick={handleSkipToDeckBuilder}
+            disabled={loading}
+            className="w-full bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-sm py-2 rounded-lg transition-colors border border-gray-700"
+          >
+            🧪 Skip to Deck Builder (test)
           </button>
 
           <div className="relative">
