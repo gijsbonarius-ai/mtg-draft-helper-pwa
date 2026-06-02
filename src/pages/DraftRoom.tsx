@@ -68,7 +68,7 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, onViewAll, cu
                 style={{ top: i * 3, left: i * 3, zIndex: i }}
               />
             ))}
-            <ZoomableCard name={cards[0]} className="absolute w-24 h-36 sm:w-28 sm:h-40" style={{ zIndex: cards.length }} />
+            <ZoomableCard name={cards[cards.length - 1]} className="absolute w-24 h-36 sm:w-28 sm:h-40" style={{ zIndex: cards.length }} />
           </>
         ) : (
           <>
