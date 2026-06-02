@@ -21,8 +21,8 @@ function checkDone(state: DraftState): DraftState {
   return state;
 }
 
-export function initDraft(hostName: string): DraftState {
-  const shuffled = shuffle(CUBE_CARDS);
+export function initDraft(hostName: string, cardCount: number = 360): DraftState {
+  const shuffled = shuffle(CUBE_CARDS).slice(0, cardCount);
   return {
     phase: 'waiting',
     deck: shuffled.slice(3),

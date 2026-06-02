@@ -1,27 +1,26 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { ZoomableCard } from '../components/CardZoom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { joinDraft, takePile, passPile } from '../lib/winstonDraft';
 import type { DraftState, PlayerKey } from '../lib/types';
 
-function CardImage({ name, className = '', style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  const [errored, setErrored] = useState(false);
-  const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
-  if (errored) {
-    return (
-      <div className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center ${className}`} style={style}>
-        <span className="text-gray-400 text-xs text-center p-2">{name}</span>
-      </div>
-    );
-  }
+function PileModal({ cards, index, onClose }: { cards: string[]; index: number; onClose: () => void }) {
   return (
-    <img
-      src={src}
-      alt={name}
-      className={`rounded-lg object-cover ${className}`}
-      style={style}
-      onError={() => setErrored(true)}
-    />
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="bg-gray-900 border-t sm:border border-gray-700 rounded-t-2xl sm:rounded-xl p-4 w-full sm:max-w-lg max-h-[80vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="font-bold text-white">Pile {index + 1} — {cards.length} card{cards.length !== 1 ? 's' : ''}</h2>
+          <button onClick={onClose} className="text-gray-400 w-9 h-9 flex items-center justify-center text-xl">✕</button>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {cards.map((card, i) => (
+            <ZoomableCard key={i} name={card} className="w-24 h-36 flex-shrink-0" />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -39,10 +38,11 @@ interface PileProps {
   isCurrentPlayerTurn: boolean;
   onTake: () => void;
   onPass: () => void;
+  onViewAll: () => void;
   currentPileIndex: number;
 }
 
-function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIndex }: PileProps) {
+function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, onViewAll, currentPileIndex }: PileProps) {
   const isViewing = isCurrentPlayerTurn && index === currentPileIndex;
   const isPassed = isCurrentPlayerTurn && index < currentPileIndex;
 
@@ -67,7 +67,7 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIn
                 style={{ top: i * 3, left: i * 3, zIndex: i }}
               />
             ))}
-            <CardImage name={cards[0]} className="absolute w-24 h-36 sm:w-28 sm:h-40" style={{ zIndex: cards.length }} />
+            <ZoomableCard name={cards[0]} className="absolute w-24 h-36 sm:w-28 sm:h-40" style={{ zIndex: cards.length }} />
           </>
         ) : (
           <>
@@ -81,7 +81,14 @@ function Pile({ cards, index, isCurrentPlayerTurn, onTake, onPass, currentPileIn
           </>
         )}
       </div>
-      <div className="text-xs text-gray-500">{cards.length} card{cards.length !== 1 ? 's' : ''}</div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">{cards.length} card{cards.length !== 1 ? 's' : ''}</span>
+        {cards.length > 0 && (
+          <button onClick={onViewAll} className="text-xs text-gray-500 hover:text-yellow-400 active:text-yellow-300 px-1 py-0.5">
+            👁
+          </button>
+        )}
+      </div>
       {isViewing && (
         <div className="flex gap-2 mt-1">
           <button
@@ -109,7 +116,7 @@ function PileDetail({ cards }: { cards: string[] }) {
       <h3 className="text-sm font-medium text-gray-400 mb-3">Cards in this pile ({cards.length})</h3>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {cards.map((card, i) => (
-          <CardImage key={i} name={card} className="w-20 h-28 flex-shrink-0" />
+          <ZoomableCard key={i} name={card} className="w-20 h-28 flex-shrink-0" />
         ))}
       </div>
     </div>
@@ -133,7 +140,7 @@ function PicksList({ cards, name }: { cards: string[]; name: string }) {
             <p className="text-gray-600 text-sm">No picks yet</p>
           ) : (
             cards.map((card, i) => (
-              <CardImage key={i} name={card} className="w-16 h-24 flex-shrink-0" />
+              <ZoomableCard key={i} name={card} className="w-16 h-24 flex-shrink-0" />
             ))
           )}
         </div>
@@ -149,6 +156,7 @@ export default function DraftRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [acting, setActing] = useState(false);
+  const [viewPile, setViewPile] = useState<number | null>(null);
   const playerKey = useRef<PlayerKey | null>(null);
   const playerName = useRef('');
 
@@ -338,11 +346,11 @@ export default function DraftRoom() {
                 key={idx}
                 cards={cards}
                 index={idx}
-
                 isCurrentPlayerTurn={isMyTurn}
                 currentPileIndex={state.currentPileIndex}
                 onTake={handleTake}
                 onPass={handlePass}
+                onViewAll={() => setViewPile(idx)}
               />
             ))}
           </div>
@@ -370,6 +378,14 @@ export default function DraftRoom() {
           </div>
         )}
       </div>
+
+      {viewPile !== null && state && (
+        <PileModal
+          cards={state.piles[viewPile]}
+          index={viewPile}
+          onClose={() => setViewPile(null)}
+        />
+      )}
     </div>
   );
 }

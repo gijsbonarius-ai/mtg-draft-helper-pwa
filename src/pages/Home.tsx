@@ -13,6 +13,7 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cardCount, setCardCount] = useState(360);
 
   if (!isSupabaseConfigured) {
     return (
@@ -38,7 +39,7 @@ export default function Home() {
     setError('');
     try {
       const roomCode = generateRoomCode();
-      const state = initDraft(name.trim());
+      const state = initDraft(name.trim(), cardCount);
       const { error: err } = await supabase
         .from('draft_sessions')
         .insert({ room_code: roomCode, state });
@@ -106,6 +107,26 @@ export default function Home() {
               onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Cards in this draft</label>
+            <div className="flex gap-2 flex-wrap">
+              {([180, 270, 360, 450, 540] as const).map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setCardCount(n)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    cardCount === n
+                      ? 'bg-yellow-500 text-gray-900'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {n}{n === 360 ? ' ✓' : ''}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
