@@ -1,10 +1,49 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ZoomableCard } from '../components/CardZoom';
+import { ZoomableCard, ZoomOverlay } from '../components/CardZoom';
 import type { DraftState, PlayerKey } from '../lib/types';
 
 const BASIC_LANDS = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
+
+// Tap = toggle selection, long-press = zoom
+function PickCard({ name, selected, onToggle }: { name: string; selected: boolean; onToggle: () => void }) {
+  const [zoomed, setZoomed] = useState(false);
+  const [err, setErr] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didZoom = useRef(false);
+  const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+
+  function startPress() {
+    didZoom.current = false;
+    timer.current = setTimeout(() => { didZoom.current = true; setZoomed(true); }, 400);
+  }
+  function endPress() { if (timer.current) clearTimeout(timer.current); }
+  function handleClick() { if (!didZoom.current) onToggle(); }
+
+  return (
+    <>
+      <div className="relative flex-shrink-0 cursor-pointer select-none"
+        onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress}
+        onTouchStart={startPress} onTouchEnd={endPress}
+        onClick={handleClick}>
+        {err ? (
+          <div className={`w-16 h-24 sm:w-20 sm:h-28 bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center p-1 transition-opacity ${selected ? 'opacity-100' : 'opacity-35'}`}>
+            <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
+          </div>
+        ) : (
+          <img src={src} alt={name} draggable={false}
+            className={`w-16 h-24 sm:w-20 sm:h-28 rounded-lg object-cover transition-opacity ${selected ? 'opacity-100' : 'opacity-35'}`}
+            onError={() => setErr(true)} />
+        )}
+        {selected && (
+          <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs font-bold pointer-events-none">✓</div>
+        )}
+      </div>
+      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
+    </>
+  );
+}
 
 export default function DeckBuilder() {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -159,15 +198,7 @@ export default function DeckBuilder() {
           <p className="text-xs text-gray-600 mb-3">Tap a card to include / exclude it from your deck</p>
           <div className="flex flex-wrap gap-2">
             {myPicks.map((card, i) => (
-              <div key={i} className="relative flex-shrink-0 cursor-pointer" onClick={() => toggle(i)}>
-                <ZoomableCard
-                  name={card}
-                  className={`w-16 h-24 sm:w-20 sm:h-28 transition-opacity ${selected.has(i) ? 'opacity-100' : 'opacity-35'}`}
-                />
-                {selected.has(i) && (
-                  <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs font-bold pointer-events-none">✓</div>
-                )}
-              </div>
+              <PickCard key={i} name={card} selected={selected.has(i)} onToggle={() => toggle(i)} />
             ))}
           </div>
         </div>
