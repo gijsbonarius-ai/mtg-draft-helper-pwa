@@ -10,7 +10,7 @@ import {
   drawCard, playCard, discardCard, tapToggle, addCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
-  toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones,
+  toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones, transformCard,
 } from '../lib/gameLogic';
 
 const STEP_LABELS: Record<GameStep, string> = {
@@ -18,20 +18,37 @@ const STEP_LABELS: Record<GameStep, string> = {
   main1: 'Main 1', combat: 'Combat', main2: 'Main 2', end: 'End',
 };
 
-const SCRYFALL_URL = (name: string) =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+const SCRYFALL_URL = (name: string, back = false) =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${back ? '&face=back' : ''}`;
 
 // Plain card image – no tap-to-zoom; modal provides zoom in gameplay
-function PlainCardImg({ name, className = '', style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  const [err, setErr] = useState(false);
-  if (err) return (
+// When transformed=true, tries the back-face URL; falls back to front if it fails
+function PlainCardImg({ name, transformed = false, className = '', style }: {
+  name: string; transformed?: boolean; className?: string; style?: React.CSSProperties;
+}) {
+  const [backErr, setBackErr] = useState(false);
+  const [frontErr, setFrontErr] = useState(false);
+
+  // Reset backErr when transformed flips back to true
+  useEffect(() => { if (transformed) setBackErr(false); }, [transformed]);
+
+  const useBack = transformed && !backErr;
+  const src = SCRYFALL_URL(name, useBack);
+
+  function handleError() {
+    if (useBack) setBackErr(true);   // silently fall back to front face
+    else setFrontErr(true);
+  }
+
+  if (frontErr && !useBack) return (
     <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 ${className}`} style={style}>
       <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
     </div>
   );
-  return <img src={SCRYFALL_URL(name)} alt={name} draggable={false}
+
+  return <img src={src} alt={name} draggable={false}
     className={`rounded object-cover ${className}`} style={style}
-    onError={() => setErr(true)} />;
+    onError={handleError} />;
 }
 
 function CardBack({ className = '' }: { className?: string }) {
@@ -47,6 +64,7 @@ function CardBack({ className = '' }: { className?: string }) {
 interface CardDetailModalProps {
   title: string;
   imageName: string;
+  transformed?: boolean;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -55,7 +73,7 @@ interface CardDetailModalProps {
   children?: React.ReactNode;
 }
 
-function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, hasNext, children }: CardDetailModalProps) {
+function CardDetailModal({ title, imageName, transformed = false, onClose, onPrev, onNext, hasPrev, hasNext, children }: CardDetailModalProps) {
   const touchX = useRef<number | null>(null);
   function onTouchStart(e: React.TouchEvent) { touchX.current = e.touches[0].clientX; }
   function onTouchEnd(e: React.TouchEvent) {
@@ -93,7 +111,7 @@ function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, h
 
       {/* Card image */}
       <div className="flex-1 flex items-center justify-center px-4 min-h-0">
-        <PlainCardImg name={imageName}
+        <PlainCardImg name={imageName} transformed={transformed}
           className="rounded-xl shadow-2xl object-contain"
           style={{ maxHeight: '52vh', maxWidth: 'min(85vw, 320px)' }} />
       </div>
@@ -177,8 +195,8 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
       onClick={() => isMe && onOpenMenu(card)}
     >
       {isMe
-        ? <PlainCardImg name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
-        : <ZoomableCard name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+        ? <PlainCardImg name={card.name} transformed={card.transformed} className="w-14 h-20 sm:w-16 sm:h-24" />
+        : <ZoomableCard name={card.name} face={card.transformed ? 'back' : undefined} className="w-14 h-20 sm:w-16 sm:h-24" />
       }
 
       {card.counters !== 0 && (
@@ -231,8 +249,8 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
           style={{ left: i * OFFSET, zIndex: i + 1 }}
           onClick={() => isMe && onOpenMenu(card)}>
           {isMe
-            ? <PlainCardImg name={card.name} className="w-14 h-20" />
-            : <ZoomableCard name={card.name} className="w-14 h-20" />
+            ? <PlainCardImg name={card.name} transformed={card.transformed} className="w-14 h-20" />
+            : <ZoomableCard name={card.name} face={card.transformed ? 'back' : undefined} className="w-14 h-20" />
           }
           {card.counters !== 0 && (
             <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
@@ -873,6 +891,7 @@ export default function GameRoom() {
           <CardDetailModal
             title={cardMenu.name}
             imageName={cardMenu.name}
+            transformed={cardMenu.transformed}
             onClose={() => setCardMenu(null)}
             hasPrev={idx > 0} hasNext={idx < bf.length - 1}
             onPrev={() => go(idx - 1)} onNext={() => go(idx + 1)}
@@ -881,6 +900,11 @@ export default function GameRoom() {
               <button onClick={() => { push(tapToggle(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm font-medium py-3 rounded-xl">
                 {cardMenu.tapped ? '↺ Untap' : '↷ Tap'}
+              </button>
+              <button onClick={() => push(transformCard(state, me, cardMenu.uid))}
+                className={`text-sm font-medium py-3 rounded-xl
+                  ${cardMenu.transformed ? 'bg-blue-800 hover:bg-blue-700 text-blue-200' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`}>
+                🔄 {cardMenu.transformed ? 'Unflip' : 'Transform'}
               </button>
               <div className="flex gap-1">
                 <button onClick={() => push(addCounter(state, me, cardMenu.uid, 1))}

@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 
+function scryfallUrl(name: string, back = false) {
+  return `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${back ? '&face=back' : ''}`;
+}
+
 // ── ZoomOverlay ──────────────────────────────────────────────────────────────
 
 interface ZoomOverlayProps {
   name: string;
+  face?: 'back';
   onClose: () => void;
 }
 
-export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
+export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
   const [errored, setErrored] = useState(false);
-  const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+  const src = scryfallUrl(name, face === 'back' && !errored);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -25,10 +30,8 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center p-4"
-      // Handle both click and touch — stopAll prevents the event reaching anything underneath
       onClick={e => { stopAll(e); onClose(); }}
       onTouchEnd={e => { stopAll(e); onClose(); }}
-      // Absorb touchstart too so no long-press timer starts on the card below
       onTouchStart={e => e.stopPropagation()}
     >
       <button
@@ -40,7 +43,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
         ✕
       </button>
 
-      {errored ? (
+      {errored && face !== 'back' ? (
         <div
           className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
           style={{ width: 'min(80vw, 340px)', minHeight: '180px' }}
@@ -69,19 +72,19 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
 }
 
 // ── ZoomableCard ─────────────────────────────────────────────────────────────
-// Tap to zoom. Use where tap has no other action.
 
 interface ZoomableCardProps {
   name: string;
+  face?: 'back';
   className?: string;
   style?: React.CSSProperties;
 }
 
-export function ZoomableCard({ name, className = '', style }: ZoomableCardProps) {
+export function ZoomableCard({ name, face, className = '', style }: ZoomableCardProps) {
   const [zoomed, setZoomed] = useState(false);
   const [errored, setErrored] = useState(false);
   const justClosed = useRef(false);
-  const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+  const src = scryfallUrl(name, face === 'back' && !errored);
 
   function open() {
     if (!justClosed.current) setZoomed(true);
@@ -89,14 +92,13 @@ export function ZoomableCard({ name, className = '', style }: ZoomableCardProps)
 
   function close() {
     setZoomed(false);
-    // Ignore any click/touch that arrives in the next 400ms (synthetic post-touch click)
     justClosed.current = true;
     setTimeout(() => { justClosed.current = false; }, 400);
   }
 
   return (
     <>
-      {errored ? (
+      {errored && face !== 'back' ? (
         <div className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center cursor-pointer ${className}`} onClick={open}>
           <span className="text-gray-400 text-xs text-center p-2">{name}</span>
         </div>
@@ -108,25 +110,25 @@ export function ZoomableCard({ name, className = '', style }: ZoomableCardProps)
           onClick={open}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} onClose={close} />}
+      {zoomed && <ZoomOverlay name={name} face={face} onClose={close} />}
     </>
   );
 }
 
 // ── LongPressZoomCard ────────────────────────────────────────────────────────
-// Long-press (500ms) to zoom. Use where tap already has another action.
 
 interface LongPressZoomCardProps {
   name: string;
+  face?: 'back';
   className?: string;
   style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent) => void;
 }
 
-export function LongPressZoomCard({ name, className = '', style, onClick }: LongPressZoomCardProps) {
+export function LongPressZoomCard({ name, face, className = '', style, onClick }: LongPressZoomCardProps) {
   const [zoomed, setZoomed] = useState(false);
   const [errored, setErrored] = useState(false);
-  const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+  const src = scryfallUrl(name, face === 'back' && !errored);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didZoom = useRef(false);
   const justClosed = useRef(false);
@@ -155,7 +157,7 @@ export function LongPressZoomCard({ name, className = '', style, onClick }: Long
 
   return (
     <>
-      {errored ? (
+      {errored && face !== 'back' ? (
         <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 cursor-pointer ${className}`} style={style} {...pressProps}>
           <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
         </div>
@@ -168,7 +170,7 @@ export function LongPressZoomCard({ name, className = '', style, onClick }: Long
           {...pressProps}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} onClose={close} />}
+      {zoomed && <ZoomOverlay name={name} face={face} onClose={close} />}
     </>
   );
 }

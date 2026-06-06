@@ -110,6 +110,7 @@ export function playCard(state: GameState, player: PlayerKey, handIdx: number): 
     isToken: false,
     note: '',
     isLand: detectLand(card),
+    transformed: false,
   });
   addLog(s, `${player} played ${card}.`);
   return s;
@@ -210,6 +211,7 @@ export function createToken(state: GameState, player: PlayerKey, name: string): 
     isToken: true,
     note: '',
     isLand: false,
+    transformed: false,
   });
   addLog(s, `${player} created ${name} token.`);
   return s;
@@ -276,6 +278,16 @@ export function concede(state: GameState, player: PlayerKey): GameState {
   return s;
 }
 
+export function transformCard(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) {
+    card.transformed = !card.transformed;
+    addLog(s, `${card.name} ${card.transformed ? 'transformed' : 'transformed back'}.`);
+  }
+  return s;
+}
+
 export function setBlocking(state: GameState, player: PlayerKey, uid: string, targetUid: string | null): GameState {
   const s = clone(state);
   const card = s.players[player].battlefield.find(c => c.uid === uid);
@@ -312,7 +324,7 @@ export function zoneToBattlefield(state: GameState, player: PlayerKey, zone: 'gr
   p.battlefield.push({
     uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name, tapped: false, counters: 0, isToken: false, note: '',
-    isLand: detectLand(name),
+    isLand: detectLand(name), transformed: false,
   });
   addLog(s, `${name} → ${player}'s battlefield from ${zone}.`);
   return s;

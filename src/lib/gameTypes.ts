@@ -10,8 +10,9 @@ export interface BattlefieldCard {
   isToken: boolean;
   note: string;
   isLand: boolean;
-  blocking?: string;   // UID of opponent creature this is blocking
-  targeting?: string;  // UID of opponent creature, or 'player1'/'player2'
+  transformed: boolean;    // true = showing back face
+  blocking?: string;       // UID of opponent creature this is blocking
+  targeting?: string;      // UID of opponent creature, or 'player1'/'player2'
 }
 
 export interface PlayerGameState {
