@@ -143,30 +143,86 @@ interface BattlefieldProps {
   onOpenMenu: (card: BattlefieldCard) => void;
 }
 
-function BattlefieldRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
+function BattlefieldCard_({ card, isMe, onOpenMenu }: { card: BattlefieldCard; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void }) {
+  return (
+    <div
+      className={`relative flex-shrink-0 transition-transform ${card.tapped ? 'rotate-90 my-3 mx-2' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
+      onClick={() => isMe && onOpenMenu(card)}
+    >
+      <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+      {card.counters !== 0 && (
+        <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+          {card.counters > 0 ? '+' : ''}{card.counters}
+        </span>
+      )}
+      {card.isToken && (
+        <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">token</span>
+      )}
+    </div>
+  );
+}
+
+// Lands grouped by name, fanned so each copy is individually tappable
+function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void }) {
+  const OFFSET = 14; // px shift per card
+  const width = 56 + (cards.length - 1) * OFFSET; // w-14 = 56px
+  return (
+    <div className="relative flex-shrink-0" style={{ width, height: 80 }}>
+      {cards.map((card, i) => (
+        <div
+          key={card.uid}
+          className={`absolute transition-transform ${card.tapped ? 'rotate-90' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
+          style={{ left: i * OFFSET, zIndex: i + 1 }}
+          onClick={() => isMe && onOpenMenu(card)}
+        >
+          <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+          {card.counters !== 0 && (
+            <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+              {card.counters > 0 ? '+' : ''}{card.counters}
+            </span>
+          )}
+        </div>
+      ))}
+      <span className="absolute -bottom-5 left-0 text-xs text-gray-500 whitespace-nowrap">
+        {cards[0].name.split(' ')[0]} ×{cards.length}
+      </span>
+    </div>
+  );
+}
+
+function SpellsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
   return (
     <div className="min-h-[4rem]">
       {cards.length === 0 ? (
         <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
       ) : (
         <div className="flex flex-wrap gap-1.5 p-2">
-          {cards.map(card => (
-            <div
-              key={card.uid}
-              className={`relative flex-shrink-0 transition-transform ${card.tapped ? 'rotate-90 my-3 mx-2' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
-              onClick={() => isMe && onOpenMenu(card)}
-            >
-              <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
-              {card.counters !== 0 && (
-                <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
-                  {card.counters > 0 ? '+' : ''}{card.counters}
-                </span>
-              )}
-              {card.isToken && (
-                <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">token</span>
-              )}
-            </div>
-          ))}
+          {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LandsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
+  // Group by name, preserve insertion order of first occurrence
+  const groups: BattlefieldCard[][] = [];
+  const seen = new Map<string, BattlefieldCard[]>();
+  for (const card of cards) {
+    if (!seen.has(card.name)) { const g: BattlefieldCard[] = []; seen.set(card.name, g); groups.push(g); }
+    seen.get(card.name)!.push(card);
+  }
+  return (
+    <div className="min-h-[5rem]">
+      {cards.length === 0 ? (
+        <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
+      ) : (
+        <div className="flex flex-wrap gap-4 p-2 pb-7">
+          {groups.map((group, i) =>
+            group.length === 1
+              ? <BattlefieldCard_ key={group[0].uid} card={group[0]} isMe={isMe} onOpenMenu={onOpenMenu} />
+              : <LandStack key={i} cards={group} isMe={isMe} onOpenMenu={onOpenMenu} />
+          )}
         </div>
       )}
     </div>
@@ -178,10 +234,10 @@ function Battlefield({ cards, isMe, onOpenMenu }: BattlefieldProps) {
   const lands = cards.filter(c => c.isLand);
   return (
     <div className="flex flex-col h-full">
-      <BattlefieldRow cards={spells} isMe={isMe} onOpenMenu={onOpenMenu}
+      <SpellsRow cards={spells} isMe={isMe} onOpenMenu={onOpenMenu}
         label={isMe ? 'Spells (tap to open actions)' : 'Opponent spells'} />
-      <div className="border-t border-gray-800/60 mx-2" />
-      <BattlefieldRow cards={lands} isMe={isMe} onOpenMenu={onOpenMenu}
+      <div className="border-t-2 border-gray-700/80 mx-2 my-1" />
+      <LandsRow cards={lands} isMe={isMe} onOpenMenu={onOpenMenu}
         label={isMe ? 'Lands' : 'Opponent lands'} />
     </div>
   );
