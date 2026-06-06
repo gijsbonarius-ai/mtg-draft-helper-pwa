@@ -19,13 +19,20 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  function close(e: React.MouseEvent | React.TouchEvent) {
+    e.stopPropagation();
+    onClose();
+  }
+
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center p-4"
-      onClick={onClose}
+      onClick={close}
+      onTouchEnd={close}
     >
       <button
-        onClick={onClose}
+        onClick={close}
+        onTouchEnd={close}
         className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-xl z-[101]"
         aria-label="Close"
       >
@@ -37,6 +44,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
           className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
           style={{ width: 'min(75vw, 320px)', minHeight: '180px' }}
           onClick={e => e.stopPropagation()}
+          onTouchEnd={e => e.stopPropagation()}
         >
           <span className="text-gray-300 text-sm text-center">{name}</span>
         </div>
@@ -48,6 +56,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
           style={{ maxWidth: 'min(75vw, 320px)', maxHeight: '80vh' }}
           onError={() => setErrored(true)}
           onClick={e => e.stopPropagation()}
+          onTouchEnd={e => e.stopPropagation()}
         />
       )}
 
