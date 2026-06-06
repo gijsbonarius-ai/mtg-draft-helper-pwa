@@ -17,31 +17,25 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // On mobile, touchend → onClose unmounts the overlay, but the browser still
-  // fires a synthetic click ~300ms later at the same spot, which lands on the
-  // card beneath and immediately re-opens zoom. preventDefault() stops that.
-  function handleBackdropTouch(e: React.TouchEvent) {
+  function stopAll(e: React.TouchEvent | React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    onClose();
-  }
-
-  function handleBackdropClick(e: React.MouseEvent) {
-    e.stopPropagation();
-    onClose();
   }
 
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center p-4"
-      onClick={handleBackdropClick}
-      onTouchEnd={handleBackdropTouch}
+      // Handle both click and touch — stopAll prevents the event reaching anything underneath
+      onClick={e => { stopAll(e); onClose(); }}
+      onTouchEnd={e => { stopAll(e); onClose(); }}
+      // Absorb touchstart too so no long-press timer starts on the card below
+      onTouchStart={e => e.stopPropagation()}
     >
       <button
-        className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-2xl z-[101]"
+        className="absolute top-4 right-4 w-14 h-14 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-2xl z-[101]"
         aria-label="Close"
-        onClick={e => { e.stopPropagation(); onClose(); }}
-        onTouchEnd={e => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+        onClick={e => { stopAll(e); onClose(); }}
+        onTouchEnd={e => { stopAll(e); onClose(); }}
       >
         ✕
       </button>
@@ -52,6 +46,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
           style={{ width: 'min(80vw, 340px)', minHeight: '180px' }}
           onClick={e => e.stopPropagation()}
           onTouchEnd={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
         >
           <span className="text-gray-300 text-sm text-center">{name}</span>
         </div>
@@ -64,6 +59,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
           onError={() => setErrored(true)}
           onClick={e => e.stopPropagation()}
           onTouchEnd={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
         />
       )}
 
@@ -73,7 +69,7 @@ export function ZoomOverlay({ name, onClose }: ZoomOverlayProps) {
 }
 
 // ── ZoomableCard ─────────────────────────────────────────────────────────────
-// Tap to zoom. Use this where tap has no other action.
+// Tap to zoom. Use where tap has no other action.
 
 interface ZoomableCardProps {
   name: string;
@@ -84,35 +80,41 @@ interface ZoomableCardProps {
 export function ZoomableCard({ name, className = '', style }: ZoomableCardProps) {
   const [zoomed, setZoomed] = useState(false);
   const [errored, setErrored] = useState(false);
+  const justClosed = useRef(false);
   const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+
+  function open() {
+    if (!justClosed.current) setZoomed(true);
+  }
+
+  function close() {
+    setZoomed(false);
+    // Ignore any click/touch that arrives in the next 400ms (synthetic post-touch click)
+    justClosed.current = true;
+    setTimeout(() => { justClosed.current = false; }, 400);
+  }
 
   return (
     <>
       {errored ? (
-        <div
-          className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center cursor-pointer ${className}`}
-          onClick={() => setZoomed(true)}
-        >
+        <div className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center cursor-pointer ${className}`} onClick={open}>
           <span className="text-gray-400 text-xs text-center p-2">{name}</span>
         </div>
       ) : (
-        <img
-          src={src}
-          alt={name}
+        <img src={src} alt={name} draggable={false}
           className={`rounded-lg object-cover cursor-pointer ${className}`}
           style={style}
           onError={() => setErrored(true)}
-          onClick={() => setZoomed(true)}
+          onClick={open}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
+      {zoomed && <ZoomOverlay name={name} onClose={close} />}
     </>
   );
 }
 
 // ── LongPressZoomCard ────────────────────────────────────────────────────────
-// Long-press (500ms) to zoom. Use where tap already has another action
-// (e.g. battlefield cards open ActionSheet, hand cards open HandSheet).
+// Long-press (500ms) to zoom. Use where tap already has another action.
 
 interface LongPressZoomCardProps {
   name: string;
@@ -127,13 +129,23 @@ export function LongPressZoomCard({ name, className = '', style, onClick }: Long
   const src = `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didZoom = useRef(false);
+  const justClosed = useRef(false);
 
   function startPress() {
     didZoom.current = false;
     timer.current = setTimeout(() => { didZoom.current = true; setZoomed(true); }, 500);
   }
   function cancelPress() { if (timer.current) clearTimeout(timer.current); }
-  function handleClick(e: React.MouseEvent) { if (!didZoom.current) onClick?.(e); }
+  function handleClick(e: React.MouseEvent) {
+    if (!didZoom.current && !justClosed.current) onClick?.(e);
+  }
+
+  function close() {
+    setZoomed(false);
+    didZoom.current = false;
+    justClosed.current = true;
+    setTimeout(() => { justClosed.current = false; }, 400);
+  }
 
   const pressProps = {
     onMouseDown: startPress, onMouseUp: cancelPress, onMouseLeave: cancelPress,
@@ -156,8 +168,7 @@ export function LongPressZoomCard({ name, className = '', style, onClick }: Long
           {...pressProps}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
+      {zoomed && <ZoomOverlay name={name} onClose={close} />}
     </>
   );
 }
-
