@@ -49,6 +49,18 @@ function CardImage({ name, className = '' }: { name: string; className?: string 
   );
 }
 
+function ZoomableHandCard({ name }: { name: string }) {
+  const [zoomed, setZoomed] = useState(false);
+  return (
+    <>
+      <div className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform" onClick={() => setZoomed(true)}>
+        <CardImage name={name} className="w-20 h-28" />
+      </div>
+      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
+    </>
+  );
+}
+
 function CardBack({ className = '' }: { className?: string }) {
   return (
     <div className={`bg-blue-950 border border-blue-700 rounded flex items-center justify-center ${className}`}>
@@ -504,7 +516,7 @@ export default function GameRoom() {
           {myState.hand.length > 0 && (
             <div className="flex gap-2 overflow-x-auto max-w-full pb-2">
               {myState.hand.map((card, i) => (
-                <CardImage key={i} name={card} className="w-20 h-28 flex-shrink-0" />
+                <ZoomableHandCard key={i} name={card} />
               ))}
             </div>
           )}
