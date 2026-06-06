@@ -2,14 +2,15 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Chat from '../components/Chat';
-import { ZoomOverlay, LongPressZoomCard } from '../components/CardZoom';
+import { ZoomableCard } from '../components/CardZoom';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
   initGame, drawOpeningHand, mulligan, keepHand,
   drawCard, playCard, discardCard, tapToggle, addCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand,
-  createToken, adjustLife, adjustPoison, nextStep, endTurn, concede, toggleLandRow,
+  createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
+  toggleLandRow, setBlocking, setTargeting,
 } from '../lib/gameLogic';
 
 const STEP_LABELS: Record<GameStep, string> = {
@@ -17,22 +18,20 @@ const STEP_LABELS: Record<GameStep, string> = {
   main1: 'Main 1', combat: 'Combat', main2: 'Main 2', end: 'End',
 };
 
-// CardImage = long-press to zoom (tap is used for other actions in game)
-function CardImage({ name, className = '', style, onClick }: { name: string; className?: string; style?: React.CSSProperties; onClick?: (e: React.MouseEvent) => void }) {
-  return <LongPressZoomCard name={name} className={className} style={style} onClick={onClick} />;
-}
+const SCRYFALL_URL = (name: string) =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
 
-// Opening hand: tap to zoom (no other tap action during setup)
-function ZoomableHandCard({ name }: { name: string }) {
-  const [zoomed, setZoomed] = useState(false);
-  return (
-    <>
-      <div className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform" onClick={() => setZoomed(true)}>
-        <LongPressZoomCard name={name} className="w-20 h-28" />
-      </div>
-      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
-    </>
+// Plain card image – no tap-to-zoom; modal provides zoom in gameplay
+function PlainCardImg({ name, className = '', style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  const [err, setErr] = useState(false);
+  if (err) return (
+    <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 ${className}`} style={style}>
+      <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
+    </div>
   );
+  return <img src={SCRYFALL_URL(name)} alt={name} draggable={false}
+    className={`rounded object-cover ${className}`} style={style}
+    onError={() => setErr(true)} />;
 }
 
 function CardBack({ className = '' }: { className?: string }) {
@@ -62,8 +61,8 @@ function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, h
   function onTouchEnd(e: React.TouchEvent) {
     if (touchX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchX.current;
-    if (dx < -40 && onNext && hasNext) onNext();
-    if (dx > 40 && onPrev && hasPrev) onPrev();
+    if (dx < -50 && onNext && hasNext) onNext();
+    if (dx > 50 && onPrev && hasPrev) onPrev();
     touchX.current = null;
   }
 
@@ -78,30 +77,75 @@ function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, h
   }, [onClose, onNext, onPrev, hasPrev, hasNext]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 shrink-0">
-        <button onClick={onPrev} disabled={!hasPrev} className="w-10 h-10 flex items-center justify-center text-gray-400 disabled:opacity-20 text-xl">‹</button>
+        <button onClick={onPrev} disabled={!hasPrev}
+          className="w-10 h-10 flex items-center justify-center text-gray-400 disabled:opacity-20 text-2xl">‹</button>
         <span className="text-white font-semibold text-sm truncate flex-1 text-center px-2">{title}</span>
-        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-xl">✕</button>
+        <button onClick={onClose}
+          className="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-xl">✕</button>
       </div>
 
-      {/* Card image — takes available space */}
+      {/* Card image */}
       <div className="flex-1 flex items-center justify-center px-4 min-h-0">
-        <CardImage name={imageName} className="max-h-full object-contain rounded-xl shadow-2xl" style={{ maxHeight: '55vh', maxWidth: 'min(85vw, 320px)' } as React.CSSProperties} />
+        <PlainCardImg name={imageName}
+          className="rounded-xl shadow-2xl object-contain"
+          style={{ maxHeight: '52vh', maxWidth: 'min(85vw, 320px)' }} />
       </div>
 
       {/* Action buttons */}
       {children && (
-        <div className="shrink-0 px-4 pb-6 pt-3 space-y-2">
+        <div className="shrink-0 px-4 pb-4 pt-3 space-y-2">
           {children}
         </div>
       )}
 
-      {/* Prev/Next nav strip */}
+      {/* Prev/Next nav */}
       <div className="flex gap-2 px-4 pb-4 shrink-0">
-        <button onClick={onPrev} disabled={!hasPrev} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">← Prev</button>
-        <button onClick={onNext} disabled={!hasNext} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">Next →</button>
+        <button onClick={onPrev} disabled={!hasPrev}
+          className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">← Prev</button>
+        <button onClick={onNext} disabled={!hasNext}
+          className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">Next →</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Picker modal (for choosing block/target) ─────────────────────────────────
+
+interface PickerModalProps {
+  title: string;
+  items: { uid: string; label: string }[];
+  onPick: (uid: string) => void;
+  onCancel: () => void;
+}
+
+function PickerModal({ title, items, onPick, onCancel }: PickerModalProps) {
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center p-4"
+      onClick={onCancel}>
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 w-full sm:max-w-sm"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-white font-bold text-sm">{title}</h3>
+          <button onClick={onCancel} className="text-gray-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center">✕</button>
+        </div>
+        <div className="space-y-1 max-h-64 overflow-y-auto">
+          {items.map(item => (
+            <button key={item.uid}
+              className="w-full text-left bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm px-4 py-3 rounded-lg"
+              onClick={() => onPick(item.uid)}>
+              {item.label}
+            </button>
+          ))}
+          {items.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No valid targets</p>}
+        </div>
+        <button onClick={onCancel} className="mt-3 w-full text-gray-500 text-sm hover:text-gray-300">Cancel</button>
       </div>
     </div>
   );
@@ -109,33 +153,74 @@ function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, h
 
 // ── Battlefield ──────────────────────────────────────────────────────────────
 
-interface BattlefieldProps {
-  cards: BattlefieldCard[];
+interface BattlefieldCardProps {
+  card: BattlefieldCard;
   isMe: boolean;
   onOpenMenu: (card: BattlefieldCard) => void;
+  oppCards?: BattlefieldCard[]; // for showing block indicator
 }
 
-function BattlefieldCard_({ card, isMe, onOpenMenu }: { card: BattlefieldCard; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void }) {
+function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: BattlefieldCardProps) {
+  const blockedBy = oppCards.find(c => c.blocking === card.uid);
+  const targetedBy = oppCards.find(c => c.targeting === card.uid);
+  const blockingCard = card.blocking ? oppCards.find(c => c.uid === card.blocking) : undefined;
+  const targetingCard = card.targeting
+    ? (card.targeting === 'player1' || card.targeting === 'player2' ? { name: card.targeting } : oppCards.find(c => c.uid === card.targeting))
+    : undefined;
+
+  // Tapped cards rotate 90°; give extra margin so they don't overlap neighbours
   return (
     <div
-      className={`relative flex-shrink-0 transition-transform ${card.tapped ? 'rotate-90 my-3 mx-2' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
+      className={`relative flex-shrink-0 transition-transform
+        ${card.tapped ? 'rotate-90 my-4 mx-4' : ''}
+        ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
       onClick={() => isMe && onOpenMenu(card)}
     >
-      <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+      {isMe
+        ? <PlainCardImg name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+        : <ZoomableCard name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+      }
+
       {card.counters !== 0 && (
-        <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+        <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight
+          ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
           {card.counters > 0 ? '+' : ''}{card.counters}
         </span>
       )}
       {card.isToken && (
         <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">token</span>
       )}
+
+      {/* Blocking badge */}
+      {(card.blocking || blockingCard) && (
+        <span className="absolute top-0 left-0 bg-red-700 text-white text-[10px] font-bold px-1 rounded leading-tight">⚔</span>
+      )}
+      {(blockedBy || blockedBy) && (
+        <span className="absolute top-0 left-0 bg-orange-700 text-white text-[10px] font-bold px-1 rounded leading-tight">⚔</span>
+      )}
+
+      {/* Target badge */}
+      {(card.targeting || targetingCard || targetedBy) && (
+        <span className="absolute bottom-0 right-0 bg-purple-700 text-white text-[10px] font-bold px-1 rounded leading-tight">🎯</span>
+      )}
+
+      {/* Block/target label below card (only when untapped so it doesn't clip) */}
+      {!card.tapped && blockingCard && (
+        <div className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-red-400 leading-tight truncate px-1">
+          ⚔ {blockingCard.name.split(' ')[0]}
+        </div>
+      )}
+      {!card.tapped && targetingCard && (
+        <div className="absolute -bottom-4 left-0 right-0 text-center text-[9px] text-purple-400 leading-tight truncate px-1">
+          🎯 {targetingCard.name.split(' ')[0]}
+        </div>
+      )}
     </div>
   );
 }
 
-// Mobile only: same-name lands fanned with fixed pixel offsets (56px card width)
-function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void }) {
+// Mobile only: same-name lands fanned
+function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; oppCards?: BattlefieldCard[] }) {
   const OFFSET = 13;
   const width = 56 + (cards.length - 1) * OFFSET;
   return (
@@ -144,9 +229,11 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
         <div key={card.uid}
           className={`absolute transition-transform ${card.tapped ? 'rotate-90' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
           style={{ left: i * OFFSET, zIndex: i + 1 }}
-          onClick={() => isMe && onOpenMenu(card)}
-        >
-          <CardImage name={card.name} className="w-14 h-20" />
+          onClick={() => isMe && onOpenMenu(card)}>
+          {isMe
+            ? <PlainCardImg name={card.name} className="w-14 h-20" />
+            : <ZoomableCard name={card.name} className="w-14 h-20" />
+          }
           {card.counters !== 0 && (
             <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
               {card.counters > 0 ? '+' : ''}{card.counters}
@@ -161,21 +248,24 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
   );
 }
 
-function SpellsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
+function SpellsRow({ cards, isMe, onOpenMenu, label, oppCards }: {
+  cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string; oppCards: BattlefieldCard[]
+}) {
   return (
-    <div className="min-h-[4rem]">
+    <div className="min-h-[5rem]">
       {cards.length === 0
         ? <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
-        : <div className="flex flex-wrap gap-1.5 p-2">
-            {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
+        : <div className="flex flex-wrap gap-x-2 gap-y-6 p-3">
+            {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} oppCards={oppCards} />)}
           </div>
       }
     </div>
   );
 }
 
-function LandsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
-  // Group by name for mobile stacking
+function LandsRow({ cards, isMe, onOpenMenu, label, oppCards }: {
+  cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string; oppCards: BattlefieldCard[]
+}) {
   const groups: BattlefieldCard[][] = [];
   const seen = new Map<string, BattlefieldCard[]>();
   for (const card of cards) {
@@ -190,60 +280,51 @@ function LandsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]
   return (
     <div className="min-h-[5rem]">
       {/* Mobile: stacked by name */}
-      <div className="flex sm:hidden flex-wrap gap-4 p-2 pb-7">
+      <div className="flex sm:hidden flex-wrap gap-5 p-3 pb-8">
         {groups.map((group, i) =>
           group.length === 1
-            ? <BattlefieldCard_ key={group[0].uid} card={group[0]} isMe={isMe} onOpenMenu={onOpenMenu} />
-            : <LandStack key={i} cards={group} isMe={isMe} onOpenMenu={onOpenMenu} />
+            ? <BattlefieldCard_ key={group[0].uid} card={group[0]} isMe={isMe} onOpenMenu={onOpenMenu} oppCards={oppCards} />
+            : <LandStack key={i} cards={group} isMe={isMe} onOpenMenu={onOpenMenu} oppCards={oppCards} />
         )}
       </div>
-      {/* Desktop: normal flex-wrap, with a count badge on repeated lands */}
-      <div className="hidden sm:flex flex-wrap gap-1.5 p-2">
-        {groups.map((group, i) => (
-          <div key={i} className="relative">
-            <div className="flex gap-1">
-              {group.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
-            </div>
-          </div>
-        ))}
+      {/* Desktop: normal flex, grouped */}
+      <div className="hidden sm:flex flex-wrap gap-x-2 gap-y-6 p-3">
+        {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} oppCards={oppCards} />)}
       </div>
     </div>
   );
 }
 
-function Battlefield({ cards, isMe, onOpenMenu }: BattlefieldProps) {
+function Battlefield({ cards, isMe, onOpenMenu, oppCards = [] }: {
+  cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; oppCards?: BattlefieldCard[]
+}) {
   const spells = cards.filter(c => !c.isLand);
   const lands = cards.filter(c => c.isLand);
   return (
     <div className="flex flex-col h-full">
       <SpellsRow cards={spells} isMe={isMe} onOpenMenu={onOpenMenu}
-        label={isMe ? 'Spells (tap to open actions)' : 'Opponent spells'} />
+        label={isMe ? 'Spells – tap to open actions' : 'Opponent spells'} oppCards={oppCards} />
       <div className="border-t-2 border-gray-700/80 mx-2 my-1" />
       <LandsRow cards={lands} isMe={isMe} onOpenMenu={onOpenMenu}
-        label={isMe ? 'Lands' : 'Opponent lands'} />
+        label={isMe ? 'Lands' : 'Opponent lands'} oppCards={oppCards} />
     </div>
   );
 }
 
 // ── Hand ─────────────────────────────────────────────────────────────────────
 
-interface HandProps {
-  cards: string[];
-  onSelect: (idx: number) => void;
-  selectedIdx: number | null;
-}
-
-function Hand({ cards, onSelect, selectedIdx }: HandProps) {
+function Hand({ cards, onSelect, selectedIdx }: {
+  cards: string[]; onSelect: (idx: number) => void; selectedIdx: number | null;
+}) {
   return (
     <div className="flex gap-2 p-2 overflow-x-auto">
       {cards.length === 0 && <span className="text-gray-600 text-sm italic py-2 px-1">No cards in hand</span>}
       {cards.map((card, i) => (
-        <div
-          key={`${card}-${i}`}
-          className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform ${selectedIdx === i ? '-translate-y-2 ring-2 ring-yellow-400 rounded' : ''}`}
-          onClick={() => onSelect(i)}
-        >
-          <CardImage name={card} className="w-14 h-20 sm:w-16 sm:h-24" />
+        <div key={`${card}-${i}`}
+          className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform
+            ${selectedIdx === i ? '-translate-y-2 ring-2 ring-yellow-400 rounded' : ''}`}
+          onClick={() => onSelect(i)}>
+          <PlainCardImg name={card} className="w-14 h-20 sm:w-16 sm:h-24" />
         </div>
       ))}
     </div>
@@ -252,14 +333,9 @@ function Hand({ cards, onSelect, selectedIdx }: HandProps) {
 
 // ── Zone modal ───────────────────────────────────────────────────────────────
 
-interface ZoneModalProps {
-  title: string;
-  cards: string[];
-  onReturnToHand?: (idx: number) => void;
-  onClose: () => void;
-}
-
-function ZoneModal({ title, cards, onReturnToHand, onClose }: ZoneModalProps) {
+function ZoneModal({ title, cards, onReturnToHand, onClose }: {
+  title: string; cards: string[]; onReturnToHand?: (idx: number) => void; onClose: () => void;
+}) {
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}>
@@ -272,8 +348,8 @@ function ZoneModal({ title, cards, onReturnToHand, onClose }: ZoneModalProps) {
         <div className="flex flex-wrap gap-2">
           {cards.length === 0 && <p className="text-gray-500 text-sm w-full py-4 text-center">Empty</p>}
           {cards.map((card, i) => (
-            <div key={i} className="relative flex-shrink-0" onClick={() => onReturnToHand?.(i)}>
-              <CardImage name={card} className="w-16 h-24 sm:w-20 sm:h-28" />
+            <div key={i} className="relative flex-shrink-0 cursor-pointer" onClick={() => onReturnToHand?.(i)}>
+              <ZoomableCard name={card} className="w-16 h-24 sm:w-20 sm:h-28" />
               {onReturnToHand && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded opacity-0 active:opacity-100">
                   <span className="text-white text-xs font-bold">↩ Hand</span>
@@ -292,16 +368,10 @@ function ZoneModal({ title, cards, onReturnToHand, onClose }: ZoneModalProps) {
 
 // ── Life counter ─────────────────────────────────────────────────────────────
 
-interface LifeCounterProps {
-  life: number;
-  poison: number;
-  name: string;
-  isMe: boolean;
-  onLife: (d: number) => void;
-  onPoison: (d: number) => void;
-}
-
-function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: LifeCounterProps) {
+function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: {
+  life: number; poison: number; name: string; isMe: boolean;
+  onLife: (d: number) => void; onPoison: (d: number) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState('');
 
@@ -316,9 +386,7 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: LifeCounter
       <span className="text-xs text-gray-400 max-w-[5rem] truncate">{name}</span>
       {isMe && (
         <button onClick={() => onLife(-1)}
-          className="w-9 h-9 bg-red-900 hover:bg-red-800 active:bg-red-700 rounded-lg text-white text-xl font-bold flex items-center justify-center">
-          −
-        </button>
+          className="w-9 h-9 bg-red-900 hover:bg-red-800 active:bg-red-700 rounded-lg text-white text-xl font-bold flex items-center justify-center">−</button>
       )}
       {editing ? (
         <input autoFocus
@@ -334,15 +402,57 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: LifeCounter
       )}
       {isMe && (
         <button onClick={() => onLife(1)}
-          className="w-9 h-9 bg-green-900 hover:bg-green-800 active:bg-green-700 rounded-lg text-white text-xl font-bold flex items-center justify-center">
-          +
-        </button>
+          className="w-9 h-9 bg-green-900 hover:bg-green-800 active:bg-green-700 rounded-lg text-white text-xl font-bold flex items-center justify-center">+</button>
       )}
       {poison > 0 && <span className="text-xs text-purple-400">☠{poison}</span>}
       {isMe && (
         <button onClick={() => onPoison(1)}
           className="text-xs text-purple-500 hover:text-purple-400 active:text-purple-300 px-1 py-1">☠+</button>
       )}
+    </div>
+  );
+}
+
+// ── Controls strip ────────────────────────────────────────────────────────────
+
+function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, onConcede }: {
+  state: GameState; me: PlayerKey; acting: boolean;
+  onNext: () => void; onEndTurn: () => void; onDraw: () => void;
+  onToken: () => void; onConcede: () => void;
+}) {
+  const opp: PlayerKey = me === 'player1' ? 'player2' : 'player1';
+  const oppState = state.players[opp];
+  return (
+    <div className="px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto">
+      {state.activePlayer === me ? (
+        <>
+          <button onClick={onNext} disabled={acting}
+            className="bg-blue-700 hover:bg-blue-600 active:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
+            Next →
+          </button>
+          <button onClick={onEndTurn} disabled={acting}
+            className="bg-yellow-700 hover:bg-yellow-600 active:bg-yellow-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
+            End Turn
+          </button>
+        </>
+      ) : (
+        <span className="text-gray-500 text-xs whitespace-nowrap px-1">
+          {oppState.name || 'Opponent'}'s turn · {STEP_LABELS[state.step]}
+        </span>
+      )}
+      <div className="flex-1" />
+      <button onClick={onDraw} disabled={acting}
+        className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        Draw
+      </button>
+      <button onClick={onToken}
+        className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        + Token
+      </button>
+      <button onClick={onConcede}
+        className="bg-red-900 hover:bg-red-800 active:bg-red-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        ⚐
+      </button>
     </div>
   );
 }
@@ -362,6 +472,8 @@ export default function GameRoom() {
   const [tokenInput, setTokenInput] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  // Picker: 'block' | 'target' or null
+  const [picker, setPicker] = useState<{ mode: 'block' | 'target'; forUid: string } | null>(null);
   const playerKey = useRef<PlayerKey | null>(null);
 
   useEffect(() => {
@@ -372,10 +484,7 @@ export default function GameRoom() {
   const loadState = useCallback(async () => {
     if (!roomCode) return;
     const { data: game } = await supabase
-      .from('game_sessions')
-      .select('state')
-      .eq('room_code', roomCode)
-      .single();
+      .from('game_sessions').select('state').eq('room_code', roomCode).single();
 
     if (game) { setState(game.state as GameState); setLoading(false); return; }
 
@@ -388,11 +497,7 @@ export default function GameRoom() {
     const ds = draft.state as DraftState;
     const p1Deck = ds.deckBuilds?.player1 ?? ds.players.player1.picks;
     const p2Deck = ds.deckBuilds?.player2 ?? ds.players.player2.picks;
-    const gs = initGame(
-      ds.players.player1.name, p1Deck,
-      ds.players.player2.name, p2Deck,
-    );
-
+    const gs = initGame(ds.players.player1.name, p1Deck, ds.players.player2.name, p2Deck);
     const { error: err } = await supabase.from('game_sessions').insert({ room_code: roomCode, state: gs });
     if (err) { setError(err.message); setLoading(false); return; }
     setState(gs);
@@ -432,7 +537,6 @@ export default function GameRoom() {
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400" />
     </div>
   );
-
   if (error) return (
     <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
       <div className="text-center">
@@ -441,7 +545,6 @@ export default function GameRoom() {
       </div>
     </div>
   );
-
   if (!state) return (
     <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
       <div className="text-center text-gray-400">
@@ -450,7 +553,6 @@ export default function GameRoom() {
       </div>
     </div>
   );
-
   if (!me) return (
     <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
       <p className="text-gray-400">Unknown player. <button onClick={() => navigate('/')} className="text-yellow-400 underline">Go home</button></p>
@@ -459,10 +561,34 @@ export default function GameRoom() {
 
   const myState = state.players[me];
   const oppState = state.players[opp];
-  const isMyTurn = state.activePlayer === me;
   const inSetup = state.phase === 'setup';
   const needsHand = inSetup && myState.hand.length === 0;
   const needsKeep = inSetup && myState.hand.length > 0 && !myState.ready;
+
+  // Picker items for block/target
+  function getPickerItems(): { uid: string; label: string }[] {
+    if (!picker) return [];
+    if (picker.mode === 'block') {
+      return oppState.battlefield.map(c => ({ uid: c.uid, label: `${c.name}${c.tapped ? ' (tapped)' : ''}` }));
+    }
+    // target: opp creatures + players
+    return [
+      ...oppState.battlefield.map(c => ({ uid: c.uid, label: c.name })),
+      { uid: opp as string, label: `🎯 ${oppState.name || 'Opponent'} (player)` },
+      { uid: me as string, label: `🎯 ${myState.name || 'Me'} (player)` },
+    ];
+  }
+
+  function handlePickerSelect(uid: string) {
+    if (!picker || !state) return;
+    if (picker.mode === 'block') {
+      push(setBlocking(state, me as PlayerKey, picker.forUid, uid));
+    } else {
+      push(setTargeting(state, me as PlayerKey, picker.forUid, uid));
+    }
+    setPicker(null);
+    setCardMenu(null);
+  }
 
   return (
     <div className="h-[100dvh] bg-gray-950 text-white flex flex-col overflow-hidden select-none">
@@ -475,7 +601,6 @@ export default function GameRoom() {
           <span className="font-mono text-yellow-300 text-xs bg-gray-800 px-2 py-0.5 rounded tracking-widest">{roomCode}</span>
         </div>
 
-        {/* Phase strip — hidden on mobile, shown on sm+ */}
         {!inSetup && state.phase === 'playing' && (
           <>
             <div className="hidden sm:flex items-center gap-1">
@@ -485,7 +610,6 @@ export default function GameRoom() {
                 </span>
               ))}
             </div>
-            {/* Mobile: show only current step */}
             <span className="sm:hidden text-xs bg-yellow-700 text-yellow-100 font-bold px-2 py-0.5 rounded">
               {STEP_LABELS[state.step]} · T{state.turn}
             </span>
@@ -499,7 +623,7 @@ export default function GameRoom() {
         </div>
       </div>
 
-      {/* ── Log overlay ── */}
+      {/* Log overlay */}
       {showLog && (
         <div className="absolute top-12 right-2 z-40 bg-gray-900 border border-gray-700 rounded-xl p-3 w-72 max-h-56 overflow-y-auto shadow-2xl">
           {state.log.slice().reverse().map((msg, i) => (
@@ -508,7 +632,7 @@ export default function GameRoom() {
         </div>
       )}
 
-      {/* ── Ended banner ── */}
+      {/* Ended banner */}
       {state.phase === 'ended' && (
         <div className="bg-yellow-900 border-b border-yellow-700 p-3 text-center text-yellow-200 font-bold shrink-0">
           {state.winner === me ? '🏆 You Win!' : `${oppState.name || opp} wins!`}
@@ -528,7 +652,10 @@ export default function GameRoom() {
           {myState.hand.length > 0 && (
             <div className="flex gap-2 overflow-x-auto max-w-full pb-2">
               {myState.hand.map((card, i) => (
-                <ZoomableHandCard key={i} name={card} />
+                <div key={i} className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+                  onClick={() => {}}>
+                  <ZoomableCard name={card} className="w-20 h-28" />
+                </div>
               ))}
             </div>
           )}
@@ -538,9 +665,7 @@ export default function GameRoom() {
           {needsKeep && (
             <div className="flex gap-3">
               <button onClick={() => push(keepHand(state, me))}
-                className="bg-green-600 hover:bg-green-500 active:bg-green-400 text-white font-bold px-6 py-3 rounded-xl">
-                Keep
-              </button>
+                className="bg-green-600 hover:bg-green-500 active:bg-green-400 text-white font-bold px-6 py-3 rounded-xl">Keep</button>
               <button onClick={() => push(mulligan(state, me))}
                 className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white font-bold px-6 py-3 rounded-xl">
                 Mulligan → {Math.max(myState.hand.length - 1, 1)}
@@ -555,131 +680,149 @@ export default function GameRoom() {
 
       {/* ── PLAYING PHASE ── */}
       {state.phase === 'playing' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 
-          {/* Opponent area (shrinks to content) */}
-          <div className="bg-gray-900/60 border-b border-gray-800 shrink-0">
-            {/* Opponent info bar */}
-            <div className="flex items-center justify-between px-3 py-1.5 gap-2">
+          {/* ── Battlefields column (left on desktop, top on mobile) ── */}
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+
+            {/* Opponent area */}
+            <div className="bg-gray-900/60 border-b border-gray-800 flex flex-col min-h-0" style={{ maxHeight: '48%' }}>
+              <div className="flex items-center justify-between px-3 py-1.5 gap-2 shrink-0">
+                <LifeCounter
+                  life={oppState.life} poison={oppState.poison}
+                  name={oppState.name || opp}
+                  isMe={false} onLife={() => {}} onPoison={() => {}}
+                />
+                <div className="flex gap-2 text-xs text-gray-500">
+                  <span>✋{oppState.hand.length}</span>
+                  <span>📚{oppState.library.length}</span>
+                  <button onClick={() => setZoneView({ player: opp, zone: 'graveyard' })}
+                    className="hover:text-gray-300 active:text-white">💀{oppState.graveyard.length}</button>
+                  <button onClick={() => setZoneView({ player: opp, zone: 'exile' })}
+                    className="hover:text-gray-300 active:text-white">✦{oppState.exile.length}</button>
+                </div>
+              </div>
+              {oppState.hand.length > 0 && (
+                <div className="flex gap-1 px-3 pb-1 overflow-x-auto shrink-0">
+                  {oppState.hand.map((_, i) => <CardBack key={i} className="w-9 h-12 flex-shrink-0" />)}
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <Battlefield cards={oppState.battlefield} isMe={false} onOpenMenu={() => {}}
+                  oppCards={myState.battlefield} />
+              </div>
+            </div>
+
+            {/* Mobile-only: controls strip between battlefields */}
+            <div className="lg:hidden bg-gray-950 border-b border-gray-800 shrink-0">
+              <ControlsStrip
+                state={state} me={me} acting={acting}
+                onNext={() => push(nextStep(state))}
+                onEndTurn={() => push(endTurn(state))}
+                onDraw={() => push(drawCard(state, me))}
+                onToken={() => setShowTokenInput(v => !v)}
+                onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
+              />
+            </div>
+
+            {/* Token input (mobile only) */}
+            {showTokenInput && (
+              <div className="lg:hidden bg-gray-900 border-b border-gray-800 px-3 py-2 flex gap-2 shrink-0">
+                <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
+                  onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
+                  onClose={() => setShowTokenInput(false)} />
+              </div>
+            )}
+
+            {/* My battlefield */}
+            <div className="flex-1 bg-green-950/10 overflow-y-auto min-h-0">
+              <Battlefield
+                cards={myState.battlefield}
+                isMe={true}
+                onOpenMenu={card => { setCardMenu(card); setHandSelected(null); }}
+                oppCards={oppState.battlefield}
+              />
+            </div>
+
+            {/* Mobile-only: my info + hand */}
+            <div className="lg:hidden">
+              <div className="bg-gray-900 border-t border-gray-800 px-3 py-1.5 flex items-center justify-between gap-2 shrink-0">
+                <LifeCounter
+                  life={myState.life} poison={myState.poison}
+                  name={myState.name || me} isMe={true}
+                  onLife={d => push(adjustLife(state, me, d))}
+                  onPoison={d => push(adjustPoison(state, me, d))}
+                />
+                <div className="flex gap-2 text-xs text-gray-500">
+                  <span>📚{myState.library.length}</span>
+                  <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
+                    className="hover:text-gray-300 active:text-white py-1">💀{myState.graveyard.length}</button>
+                  <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
+                    className="hover:text-gray-300 active:text-white py-1">✦{myState.exile.length}</button>
+                </div>
+              </div>
+              <div className="bg-gray-900/80 border-t border-gray-800">
+                <Hand cards={myState.hand} selectedIdx={handSelected}
+                  onSelect={idx => { setHandSelected(handSelected === idx ? null : idx); setCardMenu(null); }} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Desktop sidebar (right column, hidden on mobile) ── */}
+          <div className="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 bg-gray-900 border-l border-gray-800 overflow-hidden shrink-0">
+            {/* My info */}
+            <div className="border-b border-gray-800 px-3 py-2">
               <LifeCounter
-                life={oppState.life} poison={oppState.poison}
-                name={oppState.name || opp}
-                isMe={false} onLife={() => {}} onPoison={() => {}}
+                life={myState.life} poison={myState.poison}
+                name={myState.name || me} isMe={true}
+                onLife={d => push(adjustLife(state, me, d))}
+                onPoison={d => push(adjustPoison(state, me, d))}
               />
-              <div className="flex gap-2 text-xs text-gray-500">
-                <span>✋{oppState.hand.length}</span>
-                <span>📚{oppState.library.length}</span>
-                <button onClick={() => setZoneView({ player: opp, zone: 'graveyard' })}
-                  className="hover:text-gray-300 active:text-white">💀{oppState.graveyard.length}</button>
-                <button onClick={() => setZoneView({ player: opp, zone: 'exile' })}
-                  className="hover:text-gray-300 active:text-white">✦{oppState.exile.length}</button>
+              <div className="flex gap-3 text-xs text-gray-500 mt-1.5">
+                <span>📚{myState.library.length}</span>
+                <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
+                  className="hover:text-gray-300">💀{myState.graveyard.length}</button>
+                <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
+                  className="hover:text-gray-300">✦{myState.exile.length}</button>
               </div>
             </div>
-            {/* Opponent hand (backs) */}
-            {oppState.hand.length > 0 && (
-              <div className="flex gap-1 px-3 pb-1 overflow-x-auto">
-                {oppState.hand.map((_, i) => <CardBack key={i} className="w-9 h-12 flex-shrink-0" />)}
+
+            {/* Controls */}
+            <div className="border-b border-gray-800">
+              <ControlsStrip
+                state={state} me={me} acting={acting}
+                onNext={() => push(nextStep(state))}
+                onEndTurn={() => push(endTurn(state))}
+                onDraw={() => push(drawCard(state, me))}
+                onToken={() => setShowTokenInput(v => !v)}
+                onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
+              />
+            </div>
+
+            {/* Token input (desktop) */}
+            {showTokenInput && (
+              <div className="border-b border-gray-800 px-3 py-2 flex gap-2">
+                <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
+                  onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
+                  onClose={() => setShowTokenInput(false)} />
               </div>
             )}
-            {/* Opponent battlefield */}
-            <div className="overflow-x-auto">
-              <Battlefield cards={oppState.battlefield} isMe={false} onOpenMenu={() => {}} />
+
+            {/* Hand — wraps in grid on desktop */}
+            <div className="flex-1 overflow-y-auto p-2">
+              <p className="text-xs text-gray-600 mb-1 px-1">Hand ({myState.hand.length})</p>
+              {myState.hand.length === 0 && <p className="text-gray-600 text-sm italic px-1">No cards</p>}
+              <div className="flex flex-wrap gap-2">
+                {myState.hand.map((card, i) => (
+                  <div key={`${card}-${i}`}
+                    className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform
+                      ${handSelected === i ? 'ring-2 ring-yellow-400 rounded' : ''}`}
+                    onClick={() => { setHandSelected(handSelected === i ? null : i); setCardMenu(null); }}>
+                    <PlainCardImg name={card} className="w-16 h-24" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Middle controls */}
-          <div className="bg-gray-950 border-b border-gray-800 px-2 py-1.5 flex items-center gap-1.5 shrink-0 overflow-x-auto">
-            {isMyTurn ? (
-              <>
-                <button onClick={() => push(nextStep(state))} disabled={acting}
-                  className="bg-blue-700 hover:bg-blue-600 active:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
-                  Next →
-                </button>
-                <button onClick={() => push(endTurn(state))} disabled={acting}
-                  className="bg-yellow-700 hover:bg-yellow-600 active:bg-yellow-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
-                  End Turn
-                </button>
-              </>
-            ) : (
-              <span className="text-gray-500 text-xs whitespace-nowrap px-1">
-                {oppState.name || 'Opponent'}'s turn · {STEP_LABELS[state.step]}
-              </span>
-            )}
-            <div className="flex-1" />
-            <button onClick={() => push(drawCard(state, me))} disabled={acting}
-              className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
-              Draw
-            </button>
-            <button onClick={() => setShowTokenInput(v => !v)}
-              className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
-              + Token
-            </button>
-            <button onClick={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
-              className="bg-red-900 hover:bg-red-800 active:bg-red-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
-              ⚐
-            </button>
-          </div>
-
-          {/* Token input */}
-          {showTokenInput && (
-            <div className="bg-gray-900 border-b border-gray-800 px-3 py-2 flex gap-2 shrink-0">
-              <input autoFocus
-                className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
-                placeholder="Token name (e.g. 1/1 Goblin Token)"
-                value={tokenInput}
-                onChange={e => setTokenInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && tokenInput.trim()) {
-                    push(createToken(state, me, tokenInput.trim()));
-                    setTokenInput(''); setShowTokenInput(false);
-                  } else if (e.key === 'Escape') { setShowTokenInput(false); }
-                }}
-              />
-              <button onClick={() => {
-                if (tokenInput.trim()) {
-                  push(createToken(state, me, tokenInput.trim()));
-                  setTokenInput(''); setShowTokenInput(false);
-                }
-              }} className="bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-400 text-black font-bold px-4 py-2 rounded-lg text-sm">
-                Create
-              </button>
-            </div>
-          )}
-
-          {/* My battlefield (flex-1 = takes remaining space) */}
-          <div className="flex-1 bg-green-950/10 overflow-y-auto">
-            <Battlefield
-              cards={myState.battlefield}
-              isMe={true}
-              onOpenMenu={card => { setCardMenu(card); setHandSelected(null); }}
-            />
-          </div>
-
-          {/* My info bar */}
-          <div className="bg-gray-900 border-t border-gray-800 px-3 py-1.5 flex items-center justify-between gap-2 shrink-0">
-            <LifeCounter
-              life={myState.life} poison={myState.poison}
-              name={myState.name || me}
-              isMe={true}
-              onLife={d => push(adjustLife(state, me, d))}
-              onPoison={d => push(adjustPoison(state, me, d))}
-            />
-            <div className="flex gap-2 text-xs text-gray-500">
-              <span>📚{myState.library.length}</span>
-              <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
-                className="hover:text-gray-300 active:text-white py-1">💀{myState.graveyard.length}</button>
-              <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
-                className="hover:text-gray-300 active:text-white py-1">✦{myState.exile.length}</button>
-            </div>
-          </div>
-
-          {/* My hand (horizontal scroll) */}
-          <div className="bg-gray-900/80 border-t border-gray-800 shrink-0">
-            <Hand
-              cards={myState.hand}
-              selectedIdx={handSelected}
-              onSelect={idx => { setHandSelected(handSelected === idx ? null : idx); setCardMenu(null); }}
-            />
           </div>
         </div>
       )}
@@ -687,19 +830,18 @@ export default function GameRoom() {
       {/* ── Overlays ── */}
       {roomCode && me && <Chat roomCode={roomCode} playerName={myState?.name || me} />}
 
+      {/* Battlefield card action modal */}
       {cardMenu && (() => {
         const bf = myState.battlefield;
         const idx = bf.findIndex(c => c.uid === cardMenu.uid);
-        const go = (newIdx: number) => setCardMenu(bf[newIdx]);
+        const go = (ni: number) => setCardMenu(bf[ni]);
         return (
           <CardDetailModal
             title={cardMenu.name}
             imageName={cardMenu.name}
             onClose={() => setCardMenu(null)}
-            hasPrev={idx > 0}
-            hasNext={idx < bf.length - 1}
-            onPrev={() => go(idx - 1)}
-            onNext={() => go(idx + 1)}
+            hasPrev={idx > 0} hasNext={idx < bf.length - 1}
+            onPrev={() => go(idx - 1)} onNext={() => go(idx + 1)}
           >
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => { push(tapToggle(state, me, cardMenu.uid)); setCardMenu(null); }}
@@ -718,15 +860,35 @@ export default function GameRoom() {
                 className="bg-gray-800 hover:bg-gray-700 text-red-400 text-sm font-medium py-3 rounded-xl">💀 Graveyard</button>
               <button onClick={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="bg-gray-800 hover:bg-gray-700 text-yellow-400 text-sm font-medium py-3 rounded-xl">
-                {cardMenu.isLand ? '⬆ Move to Spells' : '⬇ Move to Lands'}
+                {cardMenu.isLand ? '⬆ → Spells' : '⬇ → Lands'}
               </button>
               <button onClick={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="bg-gray-800 hover:bg-gray-700 text-purple-400 text-sm font-medium py-3 rounded-xl">✦ Exile</button>
+              {/* Block/Target */}
+              <button
+                onClick={() => {
+                  if (cardMenu.blocking) { push(setBlocking(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
+                  else setPicker({ mode: 'block', forUid: cardMenu.uid });
+                }}
+                className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
+                  ${cardMenu.blocking ? 'text-red-400' : 'text-gray-300'}`}>
+                {cardMenu.blocking ? '⚔ Clear Block' : '⚔ Block…'}
+              </button>
+              <button
+                onClick={() => {
+                  if (cardMenu.targeting) { push(setTargeting(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
+                  else setPicker({ mode: 'target', forUid: cardMenu.uid });
+                }}
+                className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
+                  ${cardMenu.targeting ? 'text-purple-400' : 'text-gray-300'}`}>
+                {cardMenu.targeting ? '🎯 Clear Target' : '🎯 Target…'}
+              </button>
             </div>
           </CardDetailModal>
         );
       })()}
 
+      {/* Hand card modal */}
       {handSelected !== null && myState.hand[handSelected] && (
         <CardDetailModal
           title={myState.hand[handSelected]}
@@ -750,6 +912,7 @@ export default function GameRoom() {
         </CardDetailModal>
       )}
 
+      {/* Zone view modal */}
       {zoneView && (
         <ZoneModal
           title={`${state.players[zoneView.player].name || zoneView.player} — ${zoneView.zone}`}
@@ -760,6 +923,42 @@ export default function GameRoom() {
           onClose={() => setZoneView(null)}
         />
       )}
+
+      {/* Block / Target picker */}
+      {picker && (
+        <PickerModal
+          title={picker.mode === 'block' ? '⚔ Choose creature to block' : '🎯 Choose target'}
+          items={getPickerItems()}
+          onPick={handlePickerSelect}
+          onCancel={() => setPicker(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ── TokenInput helper ────────────────────────────────────────────────────────
+
+function TokenInput({ tokenInput, setTokenInput, onCreate, onClose }: {
+  tokenInput: string; setTokenInput: (v: string) => void;
+  onCreate: (name: string) => void; onClose: () => void;
+}) {
+  return (
+    <>
+      <input autoFocus
+        className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
+        placeholder="Token name (e.g. 1/1 Goblin)"
+        value={tokenInput}
+        onChange={e => setTokenInput(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && tokenInput.trim()) onCreate(tokenInput.trim());
+          else if (e.key === 'Escape') onClose();
+        }}
+      />
+      <button onClick={() => { if (tokenInput.trim()) onCreate(tokenInput.trim()); }}
+        className="bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-400 text-black font-bold px-4 py-2 rounded-lg text-sm">
+        Create
+      </button>
+    </>
   );
 }

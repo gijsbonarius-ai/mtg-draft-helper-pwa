@@ -264,6 +264,20 @@ export function concede(state: GameState, player: PlayerKey): GameState {
   return s;
 }
 
+export function setBlocking(state: GameState, player: PlayerKey, uid: string, targetUid: string | null): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.blocking = targetUid ?? undefined;
+  return s;
+}
+
+export function setTargeting(state: GameState, player: PlayerKey, uid: string, target: string | null): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) card.targeting = target ?? undefined;
+  return s;
+}
+
 export function toggleLandRow(state: GameState, player: PlayerKey, uid: string): GameState {
   const s = clone(state);
   const card = s.players[player].battlefield.find(c => c.uid === uid);
