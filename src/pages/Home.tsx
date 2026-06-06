@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { initDraft } from '../lib/winstonDraft';
+import { initGame } from '../lib/gameLogic';
 import { CUBE_CARDS } from '../lib/cards';
 import type { DraftState } from '../lib/types';
 
@@ -57,6 +58,38 @@ export default function Home() {
       localStorage.setItem(`draft_player_${roomCode}`, 'player1');
       localStorage.setItem(`draft_name_${roomCode}`, name.trim());
       navigate(`/deckbuild/${roomCode}`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally { setLoading(false); }
+  }
+
+  async function handleSkipToPlay() {
+    if (!name.trim()) { setError('Enter your name'); return; }
+    setLoading(true); setError('');
+    try {
+      const roomCode = generateRoomCode();
+      const shuffled = [...CUBE_CARDS].sort(() => Math.random() - 0.5).slice(0, 60);
+      const p1Deck = shuffled.slice(0, 30);
+      const p2Deck = shuffled.slice(30, 60);
+      const draftState: DraftState = {
+        phase: 'done', deck: [], piles: [[], [], []],
+        players: {
+          player1: { name: name.trim(), picks: p1Deck },
+          player2: { name: 'Player 2', picks: p2Deck },
+        },
+        currentPlayer: 'player1', currentPileIndex: 0,
+        deckBuilds: { player1: p1Deck, player2: p2Deck },
+      };
+      const gameState = initGame(name.trim(), p1Deck, 'Player 2', p2Deck);
+      const [draftRes, gameRes] = await Promise.all([
+        supabase.from('draft_sessions').insert({ room_code: roomCode, state: draftState }),
+        supabase.from('game_sessions').insert({ room_code: roomCode, state: gameState }),
+      ]);
+      if (draftRes.error) throw draftRes.error;
+      if (gameRes.error) throw gameRes.error;
+      localStorage.setItem(`draft_player_${roomCode}`, 'player1');
+      localStorage.setItem(`draft_name_${roomCode}`, name.trim());
+      navigate(`/game/${roomCode}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally { setLoading(false); }
@@ -168,13 +201,22 @@ export default function Home() {
             {loading ? 'Creating…' : 'Create New Draft'}
           </button>
 
-          <button
-            onClick={handleSkipToDeckBuilder}
-            disabled={loading}
-            className="w-full bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-sm py-2 rounded-lg transition-colors border border-gray-700"
-          >
-            🧪 Skip to Deck Builder (test)
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSkipToDeckBuilder}
+              disabled={loading}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-xs py-2 rounded-lg transition-colors border border-gray-700"
+            >
+              🧪 Skip to Deck Builder
+            </button>
+            <button
+              onClick={handleSkipToPlay}
+              disabled={loading}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-xs py-2 rounded-lg transition-colors border border-gray-700"
+            >
+              🎮 Skip to Play
+            </button>
+          </div>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

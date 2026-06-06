@@ -308,7 +308,7 @@ export default function DeckBuilder() {
             <div className="flex flex-wrap gap-2">
               {myPicks.map((card, i) => (
                 <PoolCard key={i} name={card} inDeck={deck.includes(card)}
-                  onAdd={() => { addCard(card); setTab('deck'); }}
+                  onAdd={() => addCard(card)}
                   onRemove={() => removeCard(card)} />
               ))}
             </div>
