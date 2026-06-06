@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ZoomOverlay } from '../components/CardZoom';
+import { ZoomableCard, LongPressZoomCard } from '../components/CardZoom';
 import type { DraftState, PlayerKey } from '../lib/types';
 
 const BASIC_LANDS = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
@@ -52,22 +52,15 @@ function CardImg({ name, className = '', style }: { name: string; className?: st
 
 // Small pool card — tap to toggle, long-press to zoom
 function PoolCard({ name, inDeck, onAdd, onRemove }: { name: string; inDeck: boolean; onAdd: () => void; onRemove: () => void }) {
-  const [zoomed, setZoomed] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didZoom = useRef(false);
-  function startPress() { didZoom.current = false; timer.current = setTimeout(() => { didZoom.current = true; setZoomed(true); }, 500); }
-  function endPress() { if (timer.current) clearTimeout(timer.current); }
-  function handleClick() { if (didZoom.current) return; inDeck ? onRemove() : onAdd(); }
   return (
-    <>
-      <div className="relative flex-shrink-0 cursor-pointer select-none"
-        onMouseDown={startPress} onMouseUp={endPress} onMouseLeave={endPress}
-        onTouchStart={startPress} onTouchEnd={endPress} onClick={handleClick}>
-        <CardImg name={name} className={`w-16 h-24 transition-opacity ${inDeck ? 'opacity-100' : 'opacity-40'}`} />
-        {inDeck && <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs font-bold pointer-events-none">✓</div>}
-      </div>
-      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
-    </>
+    <div className="relative flex-shrink-0">
+      <LongPressZoomCard
+        name={name}
+        className={`w-16 h-24 transition-opacity ${inDeck ? 'opacity-100' : 'opacity-40'}`}
+        onClick={() => inDeck ? onRemove() : onAdd()}
+      />
+      {inDeck && <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs font-bold pointer-events-none">✓</div>}
+    </div>
   );
 }
 
@@ -152,21 +145,17 @@ function PoolGallery({ cards, deck, onAdd, onRemove, onClose, startIdx = 0 }: {
   );
 }
 
-// Deck card with zoom overlay on tap
+// Deck card — tap to zoom, × to remove
 function DeckCard({ name, size, onRemove }: { name: string; size: 'sm' | 'md' | 'lg'; onRemove?: () => void }) {
-  const [zoomed, setZoomed] = useState(false);
   const sizeClass = size === 'sm' ? 'w-12 h-[4.2rem]' : size === 'md' ? 'w-16 h-24' : 'w-24 h-[8.4rem]';
   return (
-    <>
-      <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setZoomed(true)}>
-        <CardImg name={name} className={sizeClass} />
-        {onRemove && (
-          <button onClick={e => { e.stopPropagation(); onRemove(); }}
-            className="absolute top-0.5 right-0.5 bg-black/70 hover:bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs leading-none">×</button>
-        )}
-      </div>
-      {zoomed && <ZoomOverlay name={name} onClose={() => setZoomed(false)} />}
-    </>
+    <div className="relative flex-shrink-0">
+      <ZoomableCard name={name} className={sizeClass} />
+      {onRemove && (
+        <button onClick={e => { e.stopPropagation(); onRemove(); }}
+          className="absolute top-0.5 right-0.5 bg-black/70 hover:bg-red-600 rounded-full w-4 h-4 flex items-center justify-center text-white text-xs leading-none">×</button>
+      )}
+    </div>
   );
 }
 
