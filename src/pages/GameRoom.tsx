@@ -10,7 +10,7 @@ import {
   drawCard, playCard, discardCard, tapToggle, addCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
-  toggleLandRow, setBlocking, setTargeting,
+  toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones,
 } from '../lib/gameLogic';
 
 const STEP_LABELS: Record<GameStep, string> = {
@@ -333,33 +333,67 @@ function Hand({ cards, onSelect, selectedIdx }: {
 
 // ── Zone modal ───────────────────────────────────────────────────────────────
 
-function ZoneModal({ title, cards, onReturnToHand, onClose }: {
-  title: string; cards: string[]; onReturnToHand?: (idx: number) => void; onClose: () => void;
-}) {
+interface ZoneModalProps {
+  title: string;
+  cards: string[];
+  isMe: boolean;
+  zone: 'graveyard' | 'exile';
+  onReturnToHand?: (idx: number) => void;
+  onToBattlefield?: (idx: number) => void;
+  onSwapZone?: (idx: number) => void;
+  onClose: () => void;
+}
+
+function ZoneModal({ title, cards, isMe, zone, onReturnToHand, onToBattlefield, onSwapZone, onClose }: ZoneModalProps) {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  function closeActions() { setSelected(null); }
+
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}>
-      <div className="bg-gray-900 border-t sm:border border-gray-700 rounded-t-2xl sm:rounded-xl p-4 w-full sm:max-w-lg max-h-[80vh] overflow-y-auto"
+      <div className="bg-gray-900 border-t sm:border border-gray-700 rounded-t-2xl sm:rounded-xl p-4 w-full sm:max-w-lg max-h-[85vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center mb-3 shrink-0">
           <h2 className="font-bold text-white">{title} ({cards.length})</h2>
           <button onClick={onClose} className="text-gray-400 w-9 h-9 flex items-center justify-center text-xl">✕</button>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        {/* Card grid */}
+        <div className="flex flex-wrap gap-2 overflow-y-auto flex-1">
           {cards.length === 0 && <p className="text-gray-500 text-sm w-full py-4 text-center">Empty</p>}
           {cards.map((card, i) => (
-            <div key={i} className="relative flex-shrink-0 cursor-pointer" onClick={() => onReturnToHand?.(i)}>
-              <ZoomableCard name={card} className="w-16 h-24 sm:w-20 sm:h-28" />
-              {onReturnToHand && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded opacity-0 active:opacity-100">
-                  <span className="text-white text-xs font-bold">↩ Hand</span>
-                </div>
-              )}
+            <div key={i} className="relative flex-shrink-0 cursor-pointer"
+              onClick={() => setSelected(selected === i ? null : i)}>
+              <ZoomableCard name={card} className={`w-16 h-24 sm:w-20 sm:h-28 transition-all ${selected === i ? 'ring-2 ring-yellow-400' : ''}`} />
             </div>
           ))}
         </div>
-        {onReturnToHand && cards.length > 0 && (
-          <p className="text-gray-500 text-xs mt-3 text-center">Tap a card to return it to hand</p>
+
+        {/* Action buttons for selected card */}
+        {selected !== null && isMe && (
+          <div className="shrink-0 mt-3 space-y-2">
+            <p className="text-xs text-gray-500 text-center truncate">{cards[selected]}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {onReturnToHand && (
+                <button onClick={() => { onReturnToHand(selected); closeActions(); onClose(); }}
+                  className="bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium py-2.5 rounded-xl">↩ Hand</button>
+              )}
+              {onToBattlefield && (
+                <button onClick={() => { onToBattlefield(selected); closeActions(); onClose(); }}
+                  className="bg-green-800 hover:bg-green-700 text-white text-xs font-medium py-2.5 rounded-xl">⚔ Battlefield</button>
+              )}
+              {onSwapZone && (
+                <button onClick={() => { onSwapZone(selected); closeActions(); }}
+                  className="bg-gray-800 hover:bg-gray-700 text-purple-300 text-xs font-medium py-2.5 rounded-xl">
+                  {zone === 'graveyard' ? '✦ → Exile' : '💀 → Grave'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {selected !== null && !isMe && (
+          <p className="text-gray-600 text-xs mt-2 text-center shrink-0">Tap a card to see actions (your cards only)</p>
         )}
       </div>
     </div>
@@ -864,25 +898,33 @@ export default function GameRoom() {
               </button>
               <button onClick={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="bg-gray-800 hover:bg-gray-700 text-purple-400 text-sm font-medium py-3 rounded-xl">✦ Exile</button>
-              {/* Block/Target */}
-              <button
-                onClick={() => {
-                  if (cardMenu.blocking) { push(setBlocking(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
-                  else setPicker({ mode: 'block', forUid: cardMenu.uid });
-                }}
-                className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
-                  ${cardMenu.blocking ? 'text-red-400' : 'text-gray-300'}`}>
-                {cardMenu.blocking ? '⚔ Clear Block' : '⚔ Block…'}
-              </button>
-              <button
-                onClick={() => {
-                  if (cardMenu.targeting) { push(setTargeting(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
-                  else setPicker({ mode: 'target', forUid: cardMenu.uid });
-                }}
-                className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
-                  ${cardMenu.targeting ? 'text-purple-400' : 'text-gray-300'}`}>
-                {cardMenu.targeting ? '🎯 Clear Target' : '🎯 Target…'}
-              </button>
+              {/* Block/Target — combat step only */}
+              {state.step === 'combat' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (cardMenu.blocking) { push(setBlocking(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
+                      else setPicker({ mode: 'block', forUid: cardMenu.uid });
+                    }}
+                    className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
+                      ${cardMenu.blocking ? 'text-red-400' : 'text-gray-300'}`}>
+                    {cardMenu.blocking ? '⚔ Clear Block' : '⚔ Block…'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (cardMenu.targeting) { push(setTargeting(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
+                      else setPicker({ mode: 'target', forUid: cardMenu.uid });
+                    }}
+                    className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
+                      ${cardMenu.targeting ? 'text-purple-400' : 'text-gray-300'}`}>
+                    {cardMenu.targeting ? '🎯 Clear Target' : '🎯 Target…'}
+                  </button>
+                </>
+              ) : (
+                <div className="col-span-2 text-center text-gray-600 text-xs py-2">
+                  Block &amp; Target available in Combat step
+                </div>
+              )}
             </div>
           </CardDetailModal>
         );
@@ -913,16 +955,21 @@ export default function GameRoom() {
       )}
 
       {/* Zone view modal */}
-      {zoneView && (
-        <ZoneModal
-          title={`${state.players[zoneView.player].name || zoneView.player} — ${zoneView.zone}`}
-          cards={state.players[zoneView.player][zoneView.zone]}
-          onReturnToHand={zoneView.player === me && zoneView.zone === 'graveyard'
-            ? idx => { push(graveToHand(state, me, idx)); setZoneView(null); }
-            : undefined}
-          onClose={() => setZoneView(null)}
-        />
-      )}
+      {zoneView && (() => {
+        const isMyZone = zoneView.player === me;
+        return (
+          <ZoneModal
+            title={`${state.players[zoneView.player].name || zoneView.player} — ${zoneView.zone}`}
+            cards={state.players[zoneView.player][zoneView.zone]}
+            isMe={isMyZone}
+            zone={zoneView.zone}
+            onReturnToHand={isMyZone ? idx => push(graveToHand(state, me as PlayerKey, idx)) : undefined}
+            onToBattlefield={isMyZone ? idx => push(zoneToBattlefield(state, me as PlayerKey, zoneView.zone, idx)) : undefined}
+            onSwapZone={isMyZone ? idx => push(swapZones(state, me as PlayerKey, zoneView.zone, idx)) : undefined}
+            onClose={() => setZoneView(null)}
+          />
+        );
+      })()}
 
       {/* Block / Target picker */}
       {picker && (

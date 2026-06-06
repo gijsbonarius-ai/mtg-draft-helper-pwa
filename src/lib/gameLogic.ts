@@ -144,12 +144,22 @@ export function addCounter(state: GameState, player: PlayerKey, uid: string, del
   return s;
 }
 
+function clearReferences(state: GameState, removedUid: string): void {
+  for (const p of Object.values(state.players)) {
+    for (const c of p.battlefield) {
+      if (c.blocking === removedUid) c.blocking = undefined;
+      if (c.targeting === removedUid) c.targeting = undefined;
+    }
+  }
+}
+
 export function moveToGraveyard(state: GameState, player: PlayerKey, uid: string): GameState {
   const s = clone(state);
   const p = s.players[player];
   const idx = p.battlefield.findIndex(c => c.uid === uid);
   if (idx >= 0) {
     const [card] = p.battlefield.splice(idx, 1);
+    clearReferences(s, uid);
     if (!card.isToken) p.graveyard.push(card.name);
     addLog(s, `${card.name} → ${player}'s graveyard.`);
   }
@@ -162,6 +172,7 @@ export function returnToHand(state: GameState, player: PlayerKey, uid: string): 
   const idx = p.battlefield.findIndex(c => c.uid === uid);
   if (idx >= 0) {
     const [card] = p.battlefield.splice(idx, 1);
+    clearReferences(s, uid);
     if (!card.isToken) p.hand.push(card.name);
   }
   return s;
@@ -173,6 +184,7 @@ export function exileCard(state: GameState, player: PlayerKey, uid: string): Gam
   const idx = p.battlefield.findIndex(c => c.uid === uid);
   if (idx >= 0) {
     const [card] = p.battlefield.splice(idx, 1);
+    clearReferences(s, uid);
     if (!card.isToken) p.exile.push(card.name);
     addLog(s, `${card.name} → ${player}'s exile.`);
   }
@@ -289,5 +301,30 @@ export function setNote(state: GameState, player: PlayerKey, uid: string, note: 
   const s = clone(state);
   const card = s.players[player].battlefield.find(c => c.uid === uid);
   if (card) card.note = note;
+  return s;
+}
+
+// Move a card from graveyard or exile onto the battlefield
+export function zoneToBattlefield(state: GameState, player: PlayerKey, zone: 'graveyard' | 'exile', idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [name] = p[zone].splice(idx, 1);
+  p.battlefield.push({
+    uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name, tapped: false, counters: 0, isToken: false, note: '',
+    isLand: detectLand(name),
+  });
+  addLog(s, `${name} → ${player}'s battlefield from ${zone}.`);
+  return s;
+}
+
+// Move a card from graveyard to exile or exile to graveyard
+export function swapZones(state: GameState, player: PlayerKey, from: 'graveyard' | 'exile', idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const to: 'graveyard' | 'exile' = from === 'graveyard' ? 'exile' : 'graveyard';
+  const [name] = p[from].splice(idx, 1);
+  p[to].push(name);
+  addLog(s, `${name} → ${player}'s ${to}.`);
   return s;
 }
