@@ -162,20 +162,19 @@ function BattlefieldCard_({ card, isMe, onOpenMenu }: { card: BattlefieldCard; i
   );
 }
 
-// Lands grouped by name, fanned so each copy is individually tappable
+// Mobile only: same-name lands fanned with fixed pixel offsets (56px card width)
 function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void }) {
-  const OFFSET = 14; // px shift per card
-  const width = 56 + (cards.length - 1) * OFFSET; // w-14 = 56px
+  const OFFSET = 13;
+  const width = 56 + (cards.length - 1) * OFFSET;
   return (
     <div className="relative flex-shrink-0" style={{ width, height: 80 }}>
       {cards.map((card, i) => (
-        <div
-          key={card.uid}
+        <div key={card.uid}
           className={`absolute transition-transform ${card.tapped ? 'rotate-90' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
           style={{ left: i * OFFSET, zIndex: i + 1 }}
           onClick={() => isMe && onOpenMenu(card)}
         >
-          <CardImage name={card.name} className="w-14 h-20 sm:w-16 sm:h-24" />
+          <CardImage name={card.name} className="w-14 h-20" />
           {card.counters !== 0 && (
             <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
               {card.counters > 0 ? '+' : ''}{card.counters}
@@ -193,38 +192,49 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
 function SpellsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
   return (
     <div className="min-h-[4rem]">
-      {cards.length === 0 ? (
-        <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
-      ) : (
-        <div className="flex flex-wrap gap-1.5 p-2">
-          {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
-        </div>
-      )}
+      {cards.length === 0
+        ? <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
+        : <div className="flex flex-wrap gap-1.5 p-2">
+            {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
+          </div>
+      }
     </div>
   );
 }
 
 function LandsRow({ cards, isMe, onOpenMenu, label }: { cards: BattlefieldCard[]; isMe: boolean; onOpenMenu: (c: BattlefieldCard) => void; label: string }) {
-  // Group by name, preserve insertion order of first occurrence
+  // Group by name for mobile stacking
   const groups: BattlefieldCard[][] = [];
   const seen = new Map<string, BattlefieldCard[]>();
   for (const card of cards) {
     if (!seen.has(card.name)) { const g: BattlefieldCard[] = []; seen.set(card.name, g); groups.push(g); }
     seen.get(card.name)!.push(card);
   }
+
+  if (cards.length === 0) return (
+    <div className="min-h-[4rem] flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
+  );
+
   return (
     <div className="min-h-[5rem]">
-      {cards.length === 0 ? (
-        <div className="flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
-      ) : (
-        <div className="flex flex-wrap gap-4 p-2 pb-7">
-          {groups.map((group, i) =>
-            group.length === 1
-              ? <BattlefieldCard_ key={group[0].uid} card={group[0]} isMe={isMe} onOpenMenu={onOpenMenu} />
-              : <LandStack key={i} cards={group} isMe={isMe} onOpenMenu={onOpenMenu} />
-          )}
-        </div>
-      )}
+      {/* Mobile: stacked by name */}
+      <div className="flex sm:hidden flex-wrap gap-4 p-2 pb-7">
+        {groups.map((group, i) =>
+          group.length === 1
+            ? <BattlefieldCard_ key={group[0].uid} card={group[0]} isMe={isMe} onOpenMenu={onOpenMenu} />
+            : <LandStack key={i} cards={group} isMe={isMe} onOpenMenu={onOpenMenu} />
+        )}
+      </div>
+      {/* Desktop: normal flex-wrap, with a count badge on repeated lands */}
+      <div className="hidden sm:flex flex-wrap gap-1.5 p-2">
+        {groups.map((group, i) => (
+          <div key={i} className="relative">
+            <div className="flex gap-1">
+              {group.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} />)}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
