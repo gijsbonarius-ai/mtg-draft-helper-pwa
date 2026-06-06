@@ -18,8 +18,8 @@ const STEP_LABELS: Record<GameStep, string> = {
 };
 
 // CardImage = long-press to zoom (tap is used for other actions in game)
-function CardImage({ name, className = '', onClick }: { name: string; className?: string; onClick?: (e: React.MouseEvent) => void }) {
-  return <LongPressZoomCard name={name} className={className} onClick={onClick} />;
+function CardImage({ name, className = '', style, onClick }: { name: string; className?: string; style?: React.CSSProperties; onClick?: (e: React.MouseEvent) => void }) {
+  return <LongPressZoomCard name={name} className={className} style={style} onClick={onClick} />;
 }
 
 // Opening hand: tap to zoom (no other tap action during setup)
@@ -43,93 +43,65 @@ function CardBack({ className = '' }: { className?: string }) {
   );
 }
 
-// ── Bottom action sheet (mobile-friendly card menu) ─────────────────────────
+// ── Card detail modal ────────────────────────────────────────────────────────
 
-interface ActionSheetProps {
-  card: BattlefieldCard;
-  onTap: () => void;
-  onCounter: (d: number) => void;
-  onToGrave: () => void;
-  onToHand: () => void;
-  onExile: () => void;
-  onToggleLand: () => void;
+interface CardDetailModalProps {
+  title: string;
+  imageName: string;
   onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  children?: React.ReactNode;
 }
 
-function ActionSheet({ card, onTap, onCounter, onToGrave, onToHand, onExile, onToggleLand, onClose }: ActionSheetProps) {
+function CardDetailModal({ title, imageName, onClose, onPrev, onNext, hasPrev, hasNext, children }: CardDetailModalProps) {
+  const touchX = useRef<number | null>(null);
+  function onTouchStart(e: React.TouchEvent) { touchX.current = e.touches[0].clientX; }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    if (dx < -40 && onNext && hasNext) onNext();
+    if (dx > 40 && onPrev && hasPrev) onPrev();
+    touchX.current = null;
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight' && onNext && hasNext) onNext();
+      if (e.key === 'ArrowLeft' && onPrev && hasPrev) onPrev();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, onNext, onPrev, hasPrev, hasNext]);
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl p-4 space-y-2 shadow-2xl"
-        onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-1">
-          <span className="font-semibold text-white text-sm truncate flex-1 mr-2">{card.name}</span>
-          <button onClick={onClose} className="text-gray-400 text-lg w-8 h-8 flex items-center justify-center">✕</button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={onTap}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm font-medium py-3 rounded-xl">
-            {card.tapped ? '↺ Untap' : '↷ Tap'}
-          </button>
-          <div className="flex gap-1">
-            <button onClick={() => onCounter(1)}
-              className="flex-1 bg-green-900 hover:bg-green-800 active:bg-green-700 text-white text-sm font-medium py-3 rounded-xl">
-              +1/+1
-            </button>
-            <button onClick={() => onCounter(-1)}
-              className="flex-1 bg-red-950 hover:bg-red-900 active:bg-red-800 text-white text-sm font-medium py-3 rounded-xl">
-              −1/−1
-            </button>
-          </div>
-          <button onClick={onToHand}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm font-medium py-3 rounded-xl">
-            ↩ To Hand
-          </button>
-          <button onClick={onToGrave}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-red-400 text-sm font-medium py-3 rounded-xl">
-            💀 Graveyard
-          </button>
-          <button onClick={onToggleLand}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-yellow-400 text-sm font-medium py-3 rounded-xl">
-            {card.isLand ? '⬆ Move to Spells' : '⬇ Move to Lands'}
-          </button>
-          <button onClick={onExile}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-purple-400 text-sm font-medium py-3 rounded-xl">
-            ✦ Exile
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+        <button onClick={onPrev} disabled={!hasPrev} className="w-10 h-10 flex items-center justify-center text-gray-400 disabled:opacity-20 text-xl">‹</button>
+        <span className="text-white font-semibold text-sm truncate flex-1 text-center px-2">{title}</span>
+        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-xl">✕</button>
       </div>
-    </div>
-  );
-}
 
-// ── Hand action sheet ────────────────────────────────────────────────────────
+      {/* Card image — takes available space */}
+      <div className="flex-1 flex items-center justify-center px-4 min-h-0">
+        <CardImage name={imageName} className="max-h-full object-contain rounded-xl shadow-2xl" style={{ maxHeight: '55vh', maxWidth: 'min(85vw, 320px)' } as React.CSSProperties} />
+      </div>
 
-interface HandSheetProps {
-  cardName: string;
-  onPlay: () => void;
-  onDiscard: () => void;
-  onClose: () => void;
-}
-
-function HandSheet({ cardName, onPlay, onDiscard, onClose }: HandSheetProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl p-4 shadow-2xl"
-        onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-3">
-          <span className="font-semibold text-white text-sm truncate flex-1 mr-2">{cardName}</span>
-          <button onClick={onClose} className="text-gray-400 text-lg w-8 h-8 flex items-center justify-center">✕</button>
+      {/* Action buttons */}
+      {children && (
+        <div className="shrink-0 px-4 pb-6 pt-3 space-y-2">
+          {children}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={onPlay}
-            className="bg-green-700 hover:bg-green-600 active:bg-green-500 text-white font-bold py-4 rounded-xl text-sm">
-            ▶ Play
-          </button>
-          <button onClick={onDiscard}
-            className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-red-400 font-bold py-4 rounded-xl text-sm">
-            💀 Discard
-          </button>
-        </div>
+      )}
+
+      {/* Prev/Next nav strip */}
+      <div className="flex gap-2 px-4 pb-4 shrink-0">
+        <button onClick={onPrev} disabled={!hasPrev} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">← Prev</button>
+        <button onClick={onNext} disabled={!hasNext} className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">Next →</button>
       </div>
     </div>
   );
@@ -715,26 +687,67 @@ export default function GameRoom() {
       {/* ── Overlays ── */}
       {roomCode && me && <Chat roomCode={roomCode} playerName={myState?.name || me} />}
 
-      {cardMenu && (
-        <ActionSheet
-          card={cardMenu}
-          onTap={() => { push(tapToggle(state, me, cardMenu.uid)); setCardMenu(null); }}
-          onCounter={d => { push(addCounter(state, me, cardMenu.uid, d)); }}
-          onToGrave={() => { push(moveToGraveyard(state, me, cardMenu.uid)); setCardMenu(null); }}
-          onToHand={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
-          onExile={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
-          onToggleLand={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
-          onClose={() => setCardMenu(null)}
-        />
-      )}
+      {cardMenu && (() => {
+        const bf = myState.battlefield;
+        const idx = bf.findIndex(c => c.uid === cardMenu.uid);
+        const go = (newIdx: number) => setCardMenu(bf[newIdx]);
+        return (
+          <CardDetailModal
+            title={cardMenu.name}
+            imageName={cardMenu.name}
+            onClose={() => setCardMenu(null)}
+            hasPrev={idx > 0}
+            hasNext={idx < bf.length - 1}
+            onPrev={() => go(idx - 1)}
+            onNext={() => go(idx + 1)}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { push(tapToggle(state, me, cardMenu.uid)); setCardMenu(null); }}
+                className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm font-medium py-3 rounded-xl">
+                {cardMenu.tapped ? '↺ Untap' : '↷ Tap'}
+              </button>
+              <div className="flex gap-1">
+                <button onClick={() => push(addCounter(state, me, cardMenu.uid, 1))}
+                  className="flex-1 bg-green-900 hover:bg-green-800 text-white text-sm font-medium py-3 rounded-xl">+1/+1</button>
+                <button onClick={() => push(addCounter(state, me, cardMenu.uid, -1))}
+                  className="flex-1 bg-red-950 hover:bg-red-900 text-white text-sm font-medium py-3 rounded-xl">−1/−1</button>
+              </div>
+              <button onClick={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
+                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
+              <button onClick={() => { push(moveToGraveyard(state, me, cardMenu.uid)); setCardMenu(null); }}
+                className="bg-gray-800 hover:bg-gray-700 text-red-400 text-sm font-medium py-3 rounded-xl">💀 Graveyard</button>
+              <button onClick={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
+                className="bg-gray-800 hover:bg-gray-700 text-yellow-400 text-sm font-medium py-3 rounded-xl">
+                {cardMenu.isLand ? '⬆ Move to Spells' : '⬇ Move to Lands'}
+              </button>
+              <button onClick={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
+                className="bg-gray-800 hover:bg-gray-700 text-purple-400 text-sm font-medium py-3 rounded-xl">✦ Exile</button>
+            </div>
+          </CardDetailModal>
+        );
+      })()}
 
       {handSelected !== null && myState.hand[handSelected] && (
-        <HandSheet
-          cardName={myState.hand[handSelected]}
-          onPlay={() => { push(playCard(state, me, handSelected)); setHandSelected(null); }}
-          onDiscard={() => { push(discardCard(state, me, handSelected)); setHandSelected(null); }}
+        <CardDetailModal
+          title={myState.hand[handSelected]}
+          imageName={myState.hand[handSelected]}
           onClose={() => setHandSelected(null)}
-        />
+          hasPrev={handSelected > 0}
+          hasNext={handSelected < myState.hand.length - 1}
+          onPrev={() => setHandSelected(handSelected - 1)}
+          onNext={() => setHandSelected(handSelected + 1)}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { push(playCard(state, me, handSelected)); setHandSelected(null); }}
+              className="bg-green-700 hover:bg-green-600 active:bg-green-500 text-white font-bold py-4 rounded-xl text-sm">
+              ▶ Play
+            </button>
+            <button onClick={() => { push(discardCard(state, me, handSelected)); setHandSelected(null); }}
+              className="bg-gray-800 hover:bg-gray-700 text-red-400 font-bold py-4 rounded-xl text-sm">
+              💀 Discard
+            </button>
+          </div>
+        </CardDetailModal>
       )}
 
       {zoneView && (
