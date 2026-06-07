@@ -198,8 +198,8 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
     <div
       className={`relative flex-shrink-0 transition-transform card-hover
         ${card.tapped ? 'rotate-90 my-4 mx-4 opacity-80' : ''}
-        ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
-      onClick={() => isMe && onOpenMenu(card)}
+        ${isMe ? 'cursor-pointer active:scale-95' : 'cursor-zoom-in'}`}
+      onClick={e => { if (isMe) { e.stopPropagation(); onOpenMenu(card); } }}
     >
       {isMe
         ? <PlainCardImg name={card.name} transformed={card.transformed} className="w-14 h-20 sm:w-16 sm:h-24" />

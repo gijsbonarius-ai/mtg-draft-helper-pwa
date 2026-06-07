@@ -58,7 +58,7 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
           src={src}
           alt={name}
           className="rounded-xl object-cover shadow-2xl"
-          style={{ maxWidth: 'min(80vw, 340px)', maxHeight: '82vh' }}
+          style={{ maxWidth: 'min(90vw, 500px)', maxHeight: '90vh' }}
           onError={() => setErrored(true)}
           onClick={e => e.stopPropagation()}
           onTouchEnd={e => e.stopPropagation()}
