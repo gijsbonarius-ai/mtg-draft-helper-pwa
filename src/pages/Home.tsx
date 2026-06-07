@@ -199,7 +199,7 @@ VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=eyJ...
             className="btn-gold w-full rounded-xl py-4 text-base font-display tracking-wide"
             onClick={() => navigate(`/game/${createdGameRoom}`)}
           >
-            ▶ &nbsp;Enter as Player 1
+            ▶  Enter as Player 1
           </button>
           <button
             className="text-sm transition-colors"
@@ -235,7 +235,7 @@ VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=eyJ...
             Cuby &amp; The Wizards
           </h1>
           <p className="text-sm tracking-widest uppercase" style={{ color: 'rgba(200,185,150,0.5)' }}>
-            Winston Draft &nbsp;·&nbsp; 2 Players &nbsp;·&nbsp; 540-Card Cube
+            Winston Draft · 2 Players · 540-Card Cube
           </p>
         </header>
 
@@ -313,7 +313,7 @@ VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=eyJ...
                 Creating…
               </span>
             ) : (
-              '⚔ &nbsp;Create New Draft'
+              'Create New Draft'
             )}
           </button>
 
@@ -358,7 +358,7 @@ VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=eyJ...
 
         {/* Footer */}
         <p className="text-center text-xs" style={{ color: 'rgba(200,185,150,0.3)' }}>
-          Scryfall card images &nbsp;·&nbsp; Open source
+          Scryfall card images · Open source
         </p>
       </div>
     </Screen>
