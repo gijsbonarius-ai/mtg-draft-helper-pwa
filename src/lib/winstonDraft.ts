@@ -72,8 +72,10 @@ export function passPile(state: DraftState): DraftState {
   s.currentPileIndex = idx + 1;
 
   if (s.currentPileIndex >= 3) {
-    if (s.deck.length > 0) {
-      s.players[s.currentPlayer].picks.push(s.deck.shift()!);
+    // Forced draw: take top card from deck if available (all 3 piles were passed)
+    const forced = s.deck.shift();
+    if (forced !== undefined) {
+      s.players[s.currentPlayer].picks.push(forced);
     }
     s.currentPlayer = s.currentPlayer === 'player1' ? 'player2' : 'player1';
     s.currentPileIndex = 0;

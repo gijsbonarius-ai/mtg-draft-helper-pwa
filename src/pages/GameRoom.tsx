@@ -553,7 +553,11 @@ export default function GameRoom() {
 
     if (game) { setState(game.state as GameState); setLoading(false); return; }
 
-    if (playerKey.current !== 'player1') { setState(null); setLoading(false); return; }
+    if (playerKey.current !== 'player1') {
+      // Player 2 arrived before player 1 created the game session — retry after a delay
+      setTimeout(() => loadState(), 3000);
+      return;
+    }
 
     const { data: draft } = await supabase
       .from('draft_sessions').select('state').eq('room_code', roomCode).single();

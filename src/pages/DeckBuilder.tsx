@@ -208,10 +208,10 @@ export default function DeckBuilder() {
 
   useEffect(() => {
     const myKey = playerKey.current;
-    if (!state || !myKey) return;
+    if (!state || !myKey || saving) return;
     if (state.deckBuilds?.[myKey] && state.deckBuilds?.[myKey === 'player1' ? 'player2' : 'player1'])
       navigate(`/game/${roomCode}`);
-  }, [state, roomCode, navigate]);
+  }, [state, roomCode, navigate, saving]);
 
   const myKey = playerKey.current;
   const myPicks = myKey ? (state?.players[myKey]?.picks ?? []) : [];
@@ -245,11 +245,17 @@ export default function DeckBuilder() {
   async function saveDeck() {
     if (!roomCode || !myKey || !state) return;
     setSaving(true);
-    const fullDeck = [...deck, ...BASIC_LANDS.flatMap(land => Array(lands[land]).fill(land))];
-    const updated: DraftState = { ...state, deckBuilds: { ...state.deckBuilds, [myKey]: fullDeck } };
-    await supabase.from('draft_sessions').update({ state: updated }).eq('room_code', roomCode);
-    setState(updated);
-    setSaving(false);
+    try {
+      const fullDeck = [...deck, ...BASIC_LANDS.flatMap(land => Array(lands[land]).fill(land))];
+      const updated: DraftState = { ...state, deckBuilds: { ...state.deckBuilds, [myKey]: fullDeck } };
+      const { error: err } = await supabase.from('draft_sessions').update({ state: updated }).eq('room_code', roomCode);
+      if (err) throw err;
+      setState(updated);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to save deck. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400" /></div>;
