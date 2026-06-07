@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-950 text-white;
+@layer base {
+  body {
+    @apply bg-gray-950 text-white;
+    font-family: 'Crimson Text', Georgia, serif;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Cinzel', Georgia, serif;
+  }
+}
+
+@layer utilities {
+  .zone-felt {
+    background: radial-gradient(ellipse at 50% 0%, #2a5040 0%, #112518 80%);
+    box-shadow: inset 0 2px 16px rgba(0,0,0,0.5);
+  }
+  .zone-grave {
+    background: radial-gradient(ellipse at 50% 50%, #2a1a08 0%, #0f0a04 100%);
+    box-shadow: inset 0 2px 12px rgba(0,0,0,0.6);
+  }
+  .zone-exile {
+    background: radial-gradient(ellipse at 50% 50%, #2a1040 0%, #0f0820 100%);
+    box-shadow: inset 0 2px 12px rgba(0,0,0,0.6);
+  }
+  .zone-hand {
+    background: linear-gradient(180deg, #0f1a2a 0%, #080f18 100%);
+    box-shadow: inset 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .card-shadow {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .card-glow {
+    box-shadow: 0 0 14px rgba(201,168,76,0.5), 0 2px 8px rgba(0,0,0,0.7);
+  }
+  .gold-border {
+    border-color: #c9a84c;
+  }
+  .text-gold {
+    color: #c9a84c;
+  }
 }
