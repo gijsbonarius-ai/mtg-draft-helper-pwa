@@ -41,8 +41,8 @@ function PlainCardImg({ name, transformed = false, className = '', style }: {
   }
 
   if (frontErr && !useBack) return (
-    <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 ${className}`} style={style}>
-      <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
+    <div className={`bg-[#13131a] border border-[rgba(201,162,39,0.18)] rounded flex items-center justify-center p-1 ${className}`} style={style}>
+      <span className="text-[#c9a227]/60 text-xs text-center leading-tight">{name}</span>
     </div>
   );
 
@@ -100,23 +100,25 @@ function CardDetailModal({ title, imageName, transformed = false, onClose, onPre
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/98 flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: '#0d0d12ee' }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-t-2 border-yellow-800/60">
+      <div className="panel flex items-center justify-between px-4 py-3 shrink-0 border-b"
+        style={{ borderColor: 'var(--border-mid)' }}>
         <button onClick={onPrev} disabled={!hasPrev}
-          className="w-10 h-10 flex items-center justify-center text-gray-400 disabled:opacity-20 text-2xl">‹</button>
-        <span className="text-white font-semibold text-sm truncate flex-1 text-center px-2">{title}</span>
+          className="btn-ghost w-10 h-10 flex items-center justify-center disabled:opacity-20 text-2xl">‹</button>
+        <span className="font-display text-gold text-sm truncate flex-1 text-center px-2">{title}</span>
         <button onClick={onClose}
-          className="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-xl">✕</button>
+          className="btn-ghost w-10 h-10 flex items-center justify-center rounded-full text-xl">✕</button>
       </div>
 
       {/* Card image */}
       <div className="flex-1 flex items-center justify-center px-4 min-h-0">
         <PlainCardImg name={imageName} transformed={transformed}
-          className="rounded-xl shadow-2xl object-contain"
+          className="rounded-xl shadow-2xl object-contain glow-gold-sm"
           style={{ maxHeight: '52vh', maxWidth: 'min(85vw, 320px)' }} />
       </div>
 
@@ -130,9 +132,9 @@ function CardDetailModal({ title, imageName, transformed = false, onClose, onPre
       {/* Prev/Next nav */}
       <div className="flex gap-2 px-4 pb-4 shrink-0">
         <button onClick={onPrev} disabled={!hasPrev}
-          className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">← Prev</button>
+          className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">← Prev</button>
         <button onClick={onNext} disabled={!hasNext}
-          className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white py-2 rounded-xl text-sm font-medium">Next →</button>
+          className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">Next →</button>
       </div>
     </div>
   );
@@ -151,23 +153,24 @@ function PickerModal({ title, items, onPick, onCancel }: PickerModalProps) {
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center p-4"
       onClick={onCancel}>
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 w-full sm:max-w-sm"
+      <div className="panel border rounded-xl p-4 w-full sm:max-w-sm"
+        style={{ borderColor: 'var(--border-mid)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-white font-bold text-sm">{title}</h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-white text-xl w-8 h-8 flex items-center justify-center">✕</button>
+          <h3 className="font-display text-gold font-bold text-sm">{title}</h3>
+          <button onClick={onCancel} className="btn-ghost text-xl w-8 h-8 flex items-center justify-center rounded">✕</button>
         </div>
         <div className="space-y-1 max-h-64 overflow-y-auto">
           {items.map(item => (
             <button key={item.uid}
-              className="w-full text-left bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm px-4 py-3 rounded-lg"
+              className="btn-ghost w-full text-left text-sm px-4 py-3 rounded-lg"
               onClick={() => onPick(item.uid)}>
               {item.label}
             </button>
           ))}
-          {items.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No valid targets</p>}
+          {items.length === 0 && <p className="text-[#c9a227]/40 text-sm text-center py-4">No valid targets</p>}
         </div>
-        <button onClick={onCancel} className="mt-3 w-full text-gray-500 text-sm hover:text-gray-300">Cancel</button>
+        <button onClick={onCancel} className="mt-3 w-full text-[#c9a227]/40 text-sm hover:text-gold">Cancel</button>
       </div>
     </div>
   );
@@ -193,8 +196,8 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
   // Tapped cards rotate 90°; give extra margin so they don't overlap neighbours
   return (
     <div
-      className={`relative flex-shrink-0 transition-transform
-        ${card.tapped ? 'rotate-90 my-4 mx-4' : ''}
+      className={`relative flex-shrink-0 transition-transform card-hover
+        ${card.tapped ? 'rotate-90 my-4 mx-4 opacity-80' : ''}
         ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
       onClick={() => isMe && onOpenMenu(card)}
     >
@@ -204,13 +207,13 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
       }
 
       {card.counters !== 0 && (
-        <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight
-          ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+        <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight font-display
+          ${card.counters > 0 ? 'bg-green-700 text-[#e0b84c]' : 'bg-red-800 text-white'}`}>
           {card.counters > 0 ? '+' : ''}{card.counters}
         </span>
       )}
       {card.isToken && (
-        <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-yellow-300 leading-tight py-0.5">token</span>
+        <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/70 rounded-b text-gold leading-tight py-0.5">token</span>
       )}
 
       {/* Blocking badge */}
@@ -249,7 +252,7 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
     <div className="relative flex-shrink-0" style={{ width, height: 80 }}>
       {cards.map((card, i) => (
         <div key={card.uid}
-          className={`absolute transition-transform ${card.tapped ? 'rotate-90' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
+          className={`absolute transition-transform ${card.tapped ? 'rotate-90 opacity-80' : ''} ${isMe ? 'cursor-pointer active:scale-95' : ''}`}
           style={{ left: i * OFFSET, zIndex: i + 1 }}
           onClick={() => isMe && onOpenMenu(card)}>
           {isMe
@@ -257,13 +260,13 @@ function LandStack({ cards, isMe, onOpenMenu }: { cards: BattlefieldCard[]; isMe
             : <ZoomableCard name={card.name} face={card.transformed ? 'back' : undefined} className="w-14 h-20" />
           }
           {card.counters !== 0 && (
-            <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-600' : 'bg-red-700'}`}>
+            <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight ${card.counters > 0 ? 'bg-green-700 text-[#e0b84c]' : 'bg-red-800 text-white'}`}>
               {card.counters > 0 ? '+' : ''}{card.counters}
             </span>
           )}
         </div>
       ))}
-      <span className="absolute -bottom-5 left-0 text-xs text-gray-500 whitespace-nowrap">
+      <span className="absolute -bottom-5 left-0 text-xs text-[#c9a227]/50 whitespace-nowrap">
         {cards[0].name.split(' ')[0]} ×{cards.length}
       </span>
     </div>
@@ -276,7 +279,7 @@ function SpellsRow({ cards, isMe, onOpenMenu, label, oppCards }: {
   return (
     <div className="min-h-[5rem]">
       {cards.length === 0
-        ? <div className="flex items-center px-2 py-1 text-yellow-900/60 text-xs italic">{label}</div>
+        ? <div className="flex items-center px-2 py-1 text-[#c9a227]/30 text-xs italic font-display">{label}</div>
         : <div className="flex flex-wrap gap-x-2 gap-y-6 p-3">
             {cards.map(card => <BattlefieldCard_ key={card.uid} card={card} isMe={isMe} onOpenMenu={onOpenMenu} oppCards={oppCards} />)}
           </div>
@@ -296,7 +299,7 @@ function LandsRow({ cards, isMe, onOpenMenu, label, oppCards }: {
   }
 
   if (cards.length === 0) return (
-    <div className="min-h-[4rem] flex items-center px-2 py-1 text-gray-700 text-xs italic">{label}</div>
+    <div className="min-h-[4rem] flex items-center px-2 py-1 text-[#c9a227]/20 text-xs italic font-display">{label}</div>
   );
 
   return (
@@ -326,8 +329,8 @@ function Battlefield({ cards, isMe, onOpenMenu, oppCards = [] }: {
     <div className="flex flex-col h-full">
       <SpellsRow cards={spells} isMe={isMe} onOpenMenu={onOpenMenu}
         label={isMe ? 'Spells – tap to open actions' : 'Opponent spells'} oppCards={oppCards} />
-      <div className="border-t border-yellow-900/50 mx-2 my-1 flex items-center gap-2">
-        <span className="text-yellow-900/70 text-[10px] uppercase tracking-widest px-1">Lands</span>
+      <div className="divider-gold mx-2 my-1 flex items-center gap-2">
+        <span className="text-[#c9a227]/50 text-[10px] uppercase tracking-widest px-1 font-display">Lands</span>
       </div>
       <LandsRow cards={lands} isMe={isMe} onOpenMenu={onOpenMenu}
         label={isMe ? 'Lands' : 'Opponent lands'} oppCards={oppCards} />
@@ -342,11 +345,11 @@ function Hand({ cards, onSelect, selectedIdx }: {
 }) {
   return (
     <div className="flex gap-2 p-2 overflow-x-auto">
-      {cards.length === 0 && <span className="text-gray-600 text-sm italic py-2 px-1">No cards in hand</span>}
+      {cards.length === 0 && <span className="text-[#c9a227]/30 text-sm italic py-2 px-1">No cards in hand</span>}
       {cards.map((card, i) => (
         <div key={`${card}-${i}`}
-          className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform
-            ${selectedIdx === i ? '-translate-y-2 ring-2 ring-yellow-400 rounded' : ''}`}
+          className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform card-hover
+            ${selectedIdx === i ? '-translate-y-2 ring-2 ring-[#c9a227] rounded glow-gold-sm' : ''}`}
           onClick={() => onSelect(i)}>
           <PlainCardImg name={card} className="w-14 h-20 sm:w-16 sm:h-24" />
         </div>
@@ -373,23 +376,26 @@ function ZoneModal({ title, cards, isMe, zone, onReturnToHand, onToBattlefield, 
 
   function closeActions() { setSelected(null); }
 
+  const zoneClass = zone === 'graveyard' ? 'zone-grave' : 'zone-exile';
+
   return (
     <div className="fixed inset-0 bg-black/75 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}>
-      <div className="bg-gray-900 border-t sm:border border-gray-700 rounded-t-2xl sm:rounded-xl p-4 w-full sm:max-w-lg max-h-[85vh] flex flex-col"
+      <div className={`panel ${zoneClass} border-t sm:border rounded-t-2xl sm:rounded-xl p-4 w-full sm:max-w-lg max-h-[85vh] flex flex-col`}
+        style={{ borderColor: 'var(--border-mid)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-3 shrink-0">
-          <h2 className="font-bold text-white">{title} ({cards.length})</h2>
-          <button onClick={onClose} className="text-gray-400 w-9 h-9 flex items-center justify-center text-xl">✕</button>
+          <h2 className="font-display text-gold font-bold">{title} ({cards.length})</h2>
+          <button onClick={onClose} className="btn-ghost w-9 h-9 flex items-center justify-center text-xl rounded">✕</button>
         </div>
 
         {/* Card grid */}
         <div className="flex flex-wrap gap-2 overflow-y-auto flex-1">
-          {cards.length === 0 && <p className="text-gray-500 text-sm w-full py-4 text-center">Empty</p>}
+          {cards.length === 0 && <p className="text-[#c9a227]/30 text-sm w-full py-4 text-center">Empty</p>}
           {cards.map((card, i) => (
-            <div key={i} className="relative flex-shrink-0 cursor-pointer"
+            <div key={i} className="relative flex-shrink-0 cursor-pointer card-hover"
               onClick={() => setSelected(selected === i ? null : i)}>
-              <ZoomableCard name={card} className={`w-16 h-24 sm:w-20 sm:h-28 transition-all ${selected === i ? 'ring-2 ring-yellow-400' : ''}`} />
+              <ZoomableCard name={card} className={`w-16 h-24 sm:w-20 sm:h-28 transition-all ${selected === i ? 'ring-2 ring-[#c9a227] glow-gold-sm' : ''}`} />
             </div>
           ))}
         </div>
@@ -397,19 +403,19 @@ function ZoneModal({ title, cards, isMe, zone, onReturnToHand, onToBattlefield, 
         {/* Action buttons for selected card */}
         {selected !== null && isMe && (
           <div className="shrink-0 mt-3 space-y-2">
-            <p className="text-xs text-gray-500 text-center truncate">{cards[selected]}</p>
+            <p className="text-xs text-[#c9a227]/40 text-center truncate">{cards[selected]}</p>
             <div className="grid grid-cols-3 gap-2">
               {onReturnToHand && (
                 <button onClick={() => { onReturnToHand(selected); closeActions(); onClose(); }}
-                  className="bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium py-2.5 rounded-xl">↩ Hand</button>
+                  className="btn-ghost text-xs font-medium py-2.5 rounded-xl">↩ Hand</button>
               )}
               {onToBattlefield && (
                 <button onClick={() => { onToBattlefield(selected); closeActions(); onClose(); }}
-                  className="bg-green-800 hover:bg-green-700 text-white text-xs font-medium py-2.5 rounded-xl">⚔ Battlefield</button>
+                  className="btn-gold text-xs font-medium py-2.5 rounded-xl">⚔ Battlefield</button>
               )}
               {onSwapZone && (
                 <button onClick={() => { onSwapZone(selected); closeActions(); }}
-                  className="bg-gray-800 hover:bg-gray-700 text-purple-300 text-xs font-medium py-2.5 rounded-xl">
+                  className="btn-ghost text-xs font-medium py-2.5 rounded-xl text-[#e0b84c]">
                   {zone === 'graveyard' ? '✦ → Exile' : '💀 → Grave'}
                 </button>
               )}
@@ -417,7 +423,7 @@ function ZoneModal({ title, cards, isMe, zone, onReturnToHand, onToBattlefield, 
           </div>
         )}
         {selected !== null && !isMe && (
-          <p className="text-gray-600 text-xs mt-2 text-center shrink-0">Tap a card to see actions (your cards only)</p>
+          <p className="text-[#c9a227]/30 text-xs mt-2 text-center shrink-0">Tap a card to see actions (your cards only)</p>
         )}
       </div>
     </div>
@@ -440,33 +446,33 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-400 max-w-[5rem] truncate">{name}</span>
+    <div className="panel flex items-center gap-2 px-2 py-1 rounded-lg">
+      <span className="text-xs text-[#c9a227]/60 max-w-[5rem] truncate font-display">{name}</span>
       {isMe && (
         <button onClick={() => onLife(-1)}
-          className="w-9 h-9 bg-red-900 hover:bg-red-800 active:bg-red-700 rounded-full text-white text-xl font-bold flex items-center justify-center">−</button>
+          className="btn-ghost w-9 h-9 rounded-full text-white text-xl font-bold flex items-center justify-center">−</button>
       )}
       {editing ? (
         <input autoFocus
-          className="w-14 bg-gray-800 border border-yellow-500 rounded text-center text-white text-xl font-bold py-0.5"
+          className="arena-input w-14 text-center text-xl font-bold py-0.5 font-display"
           value={val} onChange={e => setVal(e.target.value)}
           onBlur={submit} onKeyDown={e => e.key === 'Enter' && submit()} />
       ) : (
         <span
-          className={`text-3xl font-bold min-w-[2rem] text-center ${life <= 5 ? 'text-red-400' : 'text-yellow-300'} ${isMe ? 'cursor-pointer' : ''}`}
-          style={{ fontFamily: "'Cinzel', serif" }}
+          className={`text-3xl font-bold min-w-[2rem] text-center font-display
+            ${life <= 5 ? 'text-red-400' : 'text-gold-light'} ${isMe ? 'cursor-pointer' : ''}`}
           onClick={() => { if (isMe) { setVal(String(life)); setEditing(true); } }}>
           {life}
         </span>
       )}
       {isMe && (
         <button onClick={() => onLife(1)}
-          className="w-9 h-9 bg-green-900 hover:bg-green-800 active:bg-green-700 rounded-full text-white text-xl font-bold flex items-center justify-center">+</button>
+          className="btn-ghost w-9 h-9 rounded-full text-white text-xl font-bold flex items-center justify-center">+</button>
       )}
       {poison > 0 && <span className="text-xs text-purple-400">☠{poison}</span>}
       {isMe && (
         <button onClick={() => onPoison(1)}
-          className="text-xs text-purple-500 hover:text-purple-400 active:text-purple-300 px-1 py-1">☠+</button>
+          className="btn-ghost text-xs text-purple-400 px-1 py-1">☠+</button>
       )}
     </div>
   );
@@ -482,34 +488,34 @@ function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, 
   const opp: PlayerKey = me === 'player1' ? 'player2' : 'player1';
   const oppState = state.players[opp];
   return (
-    <div className="px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto">
+    <div className="panel px-2 py-1.5 flex items-center gap-1.5 overflow-x-auto">
       {state.activePlayer === me ? (
         <>
           <button onClick={onNext} disabled={acting}
-            className="bg-blue-900 hover:bg-blue-800 active:bg-blue-700 disabled:opacity-50 border border-blue-700/50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
+            className="btn-ghost disabled:opacity-50 text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap font-display">
             Next →
           </button>
           <button onClick={onEndTurn} disabled={acting}
-            className="bg-yellow-800 hover:bg-yellow-700 active:bg-yellow-600 disabled:opacity-50 border border-yellow-600/50 text-white text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
+            className="btn-gold disabled:opacity-50 text-xs font-bold px-3 py-2 rounded-lg whitespace-nowrap">
             End Turn
           </button>
         </>
       ) : (
-        <span className="text-gray-500 text-xs whitespace-nowrap px-1">
+        <span className="text-[#c9a227]/40 text-xs whitespace-nowrap px-1 font-display">
           {oppState.name || 'Opponent'}'s turn · {STEP_LABELS[state.step]}
         </span>
       )}
       <div className="flex-1" />
       <button onClick={onDraw} disabled={acting}
-        className="bg-gray-800 border border-gray-700/50 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        className="btn-ghost disabled:opacity-50 text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         Draw
       </button>
       <button onClick={onToken}
-        className="bg-gray-800 border border-gray-700/50 hover:bg-gray-700 active:bg-gray-600 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        className="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         + Token
       </button>
       <button onClick={onConcede}
-        className="bg-red-900 hover:bg-red-800 active:bg-red-700 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        className="btn-ghost text-red-400 hover:text-red-300 text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         ⚐
       </button>
     </div>
@@ -592,29 +598,29 @@ export default function GameRoom() {
   const opp: PlayerKey = me === 'player1' ? 'player2' : 'player1';
 
   if (loading) return (
-    <div className="h-[100dvh] bg-gray-950 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400" />
+    <div className="h-[100dvh] bg-[#0d0d12] flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#c9a227]" />
     </div>
   );
   if (error) return (
-    <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
-      <div className="text-center">
+    <div className="h-[100dvh] bg-[#0d0d12] flex items-center justify-center p-4">
+      <div className="text-center panel p-8 rounded-xl" style={{ borderColor: 'var(--border-mid)' }}>
         <p className="text-red-400 mb-4">{error}</p>
-        <button onClick={() => navigate(`/draft/${roomCode}`)} className="text-yellow-400 underline">← Back to draft</button>
+        <button onClick={() => navigate(`/draft/${roomCode}`)} className="text-gold underline">← Back to draft</button>
       </div>
     </div>
   );
   if (!state) return (
-    <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
-      <div className="text-center text-gray-400">
-        <p className="mb-3">Waiting for host to start the game…</p>
-        <button onClick={loadState} className="bg-gray-800 text-yellow-400 px-4 py-2 rounded-lg text-sm">Check again</button>
+    <div className="h-[100dvh] bg-[#0d0d12] flex items-center justify-center p-4">
+      <div className="panel text-center p-8 rounded-xl" style={{ borderColor: 'var(--border-mid)' }}>
+        <p className="mb-3 text-[#c9a227]/60">Waiting for host to start the game…</p>
+        <button onClick={loadState} className="btn-ghost text-gold px-4 py-2 rounded-lg text-sm">Check again</button>
       </div>
     </div>
   );
   if (!me) return (
-    <div className="h-[100dvh] bg-gray-950 flex items-center justify-center p-4">
-      <p className="text-gray-400">Unknown player. <button onClick={() => navigate('/')} className="text-yellow-400 underline">Go home</button></p>
+    <div className="h-[100dvh] bg-[#0d0d12] flex items-center justify-center p-4">
+      <p className="text-[#c9a227]/60">Unknown player. <button onClick={() => navigate('/')} className="text-gold underline">Go home</button></p>
     </div>
   );
 
@@ -650,50 +656,61 @@ export default function GameRoom() {
   }
 
   return (
-    <div className="h-[100dvh] bg-gray-950 text-white flex flex-col overflow-hidden select-none">
+    <div className="h-[100dvh] bg-[#0d0d12] text-white flex flex-col overflow-hidden select-none min-h-screen">
 
       {/* ── Header ── */}
-      <div className="bg-gradient-to-r from-gray-950 via-gray-900 to-gray-950 border-b border-yellow-900/50 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+      <div className="bg-[#13131a] border-b px-3 py-2 flex items-center justify-between gap-2 shrink-0"
+        style={{ borderColor: 'var(--border-mid)' }}>
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(`/draft/${roomCode}`)}
-            className="text-gray-500 hover:text-gray-300 text-xs py-1 px-1">← Draft</button>
-          <span className="font-mono text-yellow-400/90 text-xs bg-black/40 border border-yellow-900/60 px-2 py-0.5 rounded tracking-widest">{roomCode}</span>
+            className="btn-ghost text-xs py-1 px-1 rounded">← Draft</button>
+          <span className="font-display text-gold text-xs bg-black/40 border px-2 py-0.5 rounded tracking-widest"
+            style={{ borderColor: 'var(--border-subtle)' }}>{roomCode}</span>
         </div>
 
         {!inSetup && state.phase === 'playing' && (
           <>
             <div className="hidden sm:flex items-center gap-1">
               {Object.entries(STEP_LABELS).map(([step, label]) => (
-                <span key={step} className={`text-xs px-1.5 py-0.5 rounded ${state.step === step ? 'bg-yellow-700/80 text-yellow-100 font-bold' : 'text-gray-600'}`}>
+                <span key={step}
+                  className={`text-xs px-1.5 py-0.5 rounded font-display
+                    ${state.step === step
+                      ? 'text-[#e0b84c] font-bold glow-gold-sm'
+                      : 'text-[#c9a227]/30'}`}
+                  style={state.step === step ? { background: 'rgba(201,162,39,0.15)', border: '1px solid rgba(201,162,39,0.35)' } : {}}>
                   {label}
                 </span>
               ))}
             </div>
-            <span className="sm:hidden text-xs bg-yellow-700 text-yellow-100 font-bold px-2 py-0.5 rounded">
+            <span className="sm:hidden text-xs font-bold px-2 py-0.5 rounded font-display text-[#e0b84c]"
+              style={{ background: 'rgba(201,162,39,0.15)', border: '1px solid rgba(201,162,39,0.35)' }}>
               {STEP_LABELS[state.step]} · T{state.turn}
             </span>
           </>
         )}
 
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 text-xs hidden sm:block">T{state.turn}</span>
+          <span className="text-[#c9a227]/40 text-xs hidden sm:block font-display">T{state.turn}</span>
           <button onClick={() => setShowLog(v => !v)}
-            className="text-gray-500 hover:text-gray-300 text-xs py-1 px-1">Log</button>
+            className="btn-ghost text-xs py-1 px-1 rounded">Log</button>
         </div>
       </div>
 
       {/* Log overlay */}
       {showLog && (
-        <div className="absolute top-12 right-2 z-40 bg-gradient-to-b from-yellow-950/95 to-gray-950/95 border border-yellow-900/50 rounded-xl p-3 w-72 max-h-56 overflow-y-auto shadow-2xl">
+        <div className="absolute top-12 right-2 z-40 panel border rounded-xl p-3 w-72 max-h-56 overflow-y-auto shadow-2xl"
+          style={{ borderColor: 'var(--border-mid)' }}>
           {state.log.slice().reverse().map((msg, i) => (
-            <p key={i} className="text-xs text-gray-400 py-0.5 border-b border-gray-800 last:border-0">{msg}</p>
+            <p key={i} className="text-xs text-[#c9a227]/50 py-0.5 border-b last:border-0"
+              style={{ borderColor: 'var(--border-subtle)' }}>{msg}</p>
           ))}
         </div>
       )}
 
       {/* Ended banner */}
       {state.phase === 'ended' && (
-        <div className="bg-gradient-to-r from-yellow-900 via-yellow-800 to-yellow-900 border-b-2 border-yellow-600 p-3 text-center text-yellow-200 font-bold shrink-0">
+        <div className="border-b-2 p-3 text-center font-bold shrink-0 font-display text-[#e0b84c] glow-gold"
+          style={{ background: 'rgba(201,162,39,0.12)', borderColor: 'var(--border-mid)' }}>
           {state.winner === me ? '🏆 You Win!' : `${oppState.name || opp} wins!`}
         </div>
       )}
@@ -701,17 +718,17 @@ export default function GameRoom() {
       {/* ── SETUP PHASE ── */}
       {inSetup && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 overflow-y-auto">
-          <h2 className="text-xl font-bold text-yellow-400">Opening Hand</h2>
+          <h2 className="text-xl font-bold text-gold font-display glow-gold">Opening Hand</h2>
           {needsHand && (
             <button onClick={() => push(drawOpeningHand(state, me))}
-              className="bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-300 text-black font-bold px-8 py-4 rounded-xl text-lg">
+              className="btn-gold font-bold px-8 py-4 rounded-xl text-lg">
               Draw 7 Cards
             </button>
           )}
           {myState.hand.length > 0 && (
             <div className="flex gap-2 overflow-x-auto max-w-full pb-2">
               {myState.hand.map((card, i) => (
-                <div key={i} className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+                <div key={i} className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform card-hover"
                   onClick={() => {}}>
                   <ZoomableCard name={card} className="w-20 h-28" />
                 </div>
@@ -719,20 +736,20 @@ export default function GameRoom() {
             </div>
           )}
           {myState.hand.length > 0 && (
-            <p className="text-sm text-gray-400">Hand of {myState.hand.length} · Library: {myState.library.length}</p>
+            <p className="text-sm text-[#c9a227]/50 font-display">Hand of {myState.hand.length} · Library: {myState.library.length}</p>
           )}
           {needsKeep && (
             <div className="flex gap-3">
               <button onClick={() => push(keepHand(state, me))}
-                className="bg-green-600 hover:bg-green-500 active:bg-green-400 text-white font-bold px-6 py-3 rounded-xl">Keep</button>
+                className="btn-gold font-bold px-6 py-3 rounded-xl">Keep</button>
               <button onClick={() => push(mulligan(state, me))}
-                className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-white font-bold px-6 py-3 rounded-xl">
+                className="btn-ghost font-bold px-6 py-3 rounded-xl">
                 Mulligan → {Math.max(myState.hand.length - 1, 1)}
               </button>
             </div>
           )}
           {myState.ready && !oppState.ready && (
-            <p className="text-gray-400 text-sm">Waiting for {oppState.name || 'opponent'} to keep…</p>
+            <p className="text-[#c9a227]/40 text-sm font-display">Waiting for {oppState.name || 'opponent'} to keep…</p>
           )}
         </div>
       )}
@@ -745,20 +762,21 @@ export default function GameRoom() {
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
 
             {/* Opponent area */}
-            <div className="border-b border-yellow-900/30 flex flex-col min-h-0" style={{ maxHeight: '48%', background: 'radial-gradient(ellipse at 50% 100%, #2a1a08 0%, #0d0d0d 70%)' }}>
+            <div className="zone-opp border-b flex flex-col min-h-0"
+              style={{ maxHeight: '48%', borderColor: 'var(--border-subtle)' }}>
               <div className="flex items-center justify-between px-3 py-1.5 gap-2 shrink-0">
                 <LifeCounter
                   life={oppState.life} poison={oppState.poison}
                   name={oppState.name || opp}
                   isMe={false} onLife={() => {}} onPoison={() => {}}
                 />
-                <div className="flex gap-2 text-xs text-gray-500">
+                <div className="flex gap-2 text-xs text-[#c9a227]/50">
                   <span>✋{oppState.hand.length}</span>
                   <span>📚{oppState.library.length}</span>
                   <button onClick={() => setZoneView({ player: opp, zone: 'graveyard' })}
-                    className="hover:text-gray-300 active:text-white">💀{oppState.graveyard.length}</button>
+                    className="hover:text-gold active:text-gold-light">💀{oppState.graveyard.length}</button>
                   <button onClick={() => setZoneView({ player: opp, zone: 'exile' })}
-                    className="hover:text-gray-300 active:text-white">✦{oppState.exile.length}</button>
+                    className="hover:text-gold active:text-gold-light">✦{oppState.exile.length}</button>
                 </div>
               </div>
               {oppState.hand.length > 0 && (
@@ -773,7 +791,8 @@ export default function GameRoom() {
             </div>
 
             {/* Mobile-only: controls strip between battlefields */}
-            <div className="lg:hidden bg-gray-950 border-b border-gray-800 shrink-0">
+            <div className="lg:hidden bg-[#13131a] border-b shrink-0"
+              style={{ borderColor: 'var(--border-subtle)' }}>
               <ControlsStrip
                 state={state} me={me} acting={acting}
                 onNext={() => push(nextStep(state))}
@@ -786,7 +805,8 @@ export default function GameRoom() {
 
             {/* Token input (mobile only) */}
             {showTokenInput && (
-              <div className="lg:hidden bg-gray-900 border-b border-gray-800 px-3 py-2 flex gap-2 shrink-0">
+              <div className="lg:hidden bg-[#13131a] border-b px-3 py-2 flex gap-2 shrink-0"
+                style={{ borderColor: 'var(--border-subtle)' }}>
                 <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
                   onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
                   onClose={() => setShowTokenInput(false)} />
@@ -805,22 +825,23 @@ export default function GameRoom() {
 
             {/* Mobile-only: my info + hand */}
             <div className="lg:hidden">
-              <div className="bg-gradient-to-r from-gray-950 via-gray-900 to-gray-950 border-t border-yellow-900/40 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+              <div className="bg-[#13131a] border-t px-3 py-2 flex items-center justify-between gap-2 shrink-0"
+                style={{ borderColor: 'var(--border-mid)' }}>
                 <LifeCounter
                   life={myState.life} poison={myState.poison}
                   name={myState.name || me} isMe={true}
                   onLife={d => push(adjustLife(state, me, d))}
                   onPoison={d => push(adjustPoison(state, me, d))}
                 />
-                <div className="flex gap-2 text-xs text-gray-500">
+                <div className="flex gap-2 text-xs text-[#c9a227]/50">
                   <span>📚{myState.library.length}</span>
                   <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
-                    className="hover:text-gray-300 active:text-white py-1">💀{myState.graveyard.length}</button>
+                    className="hover:text-gold active:text-gold-light py-1">💀{myState.graveyard.length}</button>
                   <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
-                    className="hover:text-gray-300 active:text-white py-1">✦{myState.exile.length}</button>
+                    className="hover:text-gold active:text-gold-light py-1">✦{myState.exile.length}</button>
                 </div>
               </div>
-              <div className="zone-hand border-t border-blue-900/40">
+              <div className="zone-hand border-t" style={{ borderColor: 'var(--border-subtle)' }}>
                 <Hand cards={myState.hand} selectedIdx={handSelected}
                   onSelect={idx => { setHandSelected(handSelected === idx ? null : idx); setCardMenu(null); }} />
               </div>
@@ -828,26 +849,27 @@ export default function GameRoom() {
           </div>
 
           {/* ── Desktop sidebar (right column, hidden on mobile) ── */}
-          <div className="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 bg-gradient-to-b from-gray-950 to-gray-900 border-l border-yellow-900/30 overflow-hidden shrink-0">
+          <div className="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 bg-[#13131a] border-l overflow-hidden shrink-0"
+            style={{ borderColor: 'var(--border-subtle)' }}>
             {/* My info */}
-            <div className="border-b border-gray-800 px-3 py-2">
+            <div className="border-b px-3 py-2" style={{ borderColor: 'var(--border-subtle)' }}>
               <LifeCounter
                 life={myState.life} poison={myState.poison}
                 name={myState.name || me} isMe={true}
                 onLife={d => push(adjustLife(state, me, d))}
                 onPoison={d => push(adjustPoison(state, me, d))}
               />
-              <div className="flex gap-3 text-xs text-gray-500 mt-1.5">
+              <div className="flex gap-3 text-xs text-[#c9a227]/50 mt-1.5">
                 <span>📚{myState.library.length}</span>
                 <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
-                  className="hover:text-gray-300">💀{myState.graveyard.length}</button>
+                  className="hover:text-gold">💀{myState.graveyard.length}</button>
                 <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
-                  className="hover:text-gray-300">✦{myState.exile.length}</button>
+                  className="hover:text-gold">✦{myState.exile.length}</button>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="border-b border-gray-800">
+            <div className="border-b" style={{ borderColor: 'var(--border-subtle)' }}>
               <ControlsStrip
                 state={state} me={me} acting={acting}
                 onNext={() => push(nextStep(state))}
@@ -860,7 +882,7 @@ export default function GameRoom() {
 
             {/* Token input (desktop) */}
             {showTokenInput && (
-              <div className="border-b border-gray-800 px-3 py-2 flex gap-2">
+              <div className="border-b px-3 py-2 flex gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
                 <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
                   onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
                   onClose={() => setShowTokenInput(false)} />
@@ -869,13 +891,13 @@ export default function GameRoom() {
 
             {/* Hand — wraps in grid on desktop */}
             <div className="flex-1 overflow-y-auto p-2">
-              <p className="text-xs text-gray-600 mb-1 px-1">Hand ({myState.hand.length})</p>
-              {myState.hand.length === 0 && <p className="text-gray-600 text-sm italic px-1">No cards</p>}
+              <p className="text-xs text-[#c9a227]/40 mb-1 px-1 font-display">Hand ({myState.hand.length})</p>
+              {myState.hand.length === 0 && <p className="text-[#c9a227]/20 text-sm italic px-1">No cards</p>}
               <div className="flex flex-wrap gap-2">
                 {myState.hand.map((card, i) => (
                   <div key={`${card}-${i}`}
-                    className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform
-                      ${handSelected === i ? 'ring-2 ring-yellow-400 rounded' : ''}`}
+                    className={`flex-shrink-0 cursor-pointer active:scale-95 transition-transform card-hover
+                      ${handSelected === i ? 'ring-2 ring-[#c9a227] rounded glow-gold-sm' : ''}`}
                     onClick={() => { setHandSelected(handSelected === i ? null : i); setCardMenu(null); }}>
                     <PlainCardImg name={card} className="w-16 h-24" />
                   </div>
@@ -905,30 +927,30 @@ export default function GameRoom() {
           >
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => { push(tapToggle(state, me, cardMenu.uid)); setCardMenu(null); }}
-                className="bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-sm font-medium py-3 rounded-xl">
+                className="btn-ghost text-sm font-medium py-3 rounded-xl">
                 {cardMenu.tapped ? '↺ Untap' : '↷ Tap'}
               </button>
               <button onClick={() => push(transformCard(state, me, cardMenu.uid))}
-                className={`text-sm font-medium py-3 rounded-xl
-                  ${cardMenu.transformed ? 'bg-blue-800 hover:bg-blue-700 text-blue-200' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`}>
+                className={`btn-ghost text-sm font-medium py-3 rounded-xl
+                  ${cardMenu.transformed ? 'text-[#e0b84c]' : 'text-[#c9a227]/60'}`}>
                 🔄 {cardMenu.transformed ? 'Unflip' : 'Transform'}
               </button>
               <div className="flex gap-1">
                 <button onClick={() => push(addCounter(state, me, cardMenu.uid, 1))}
-                  className="flex-1 bg-green-900 hover:bg-green-800 text-white text-sm font-medium py-3 rounded-xl">+1/+1</button>
+                  className="flex-1 btn-ghost text-green-400 text-sm font-medium py-3 rounded-xl">+1/+1</button>
                 <button onClick={() => push(addCounter(state, me, cardMenu.uid, -1))}
-                  className="flex-1 bg-red-950 hover:bg-red-900 text-white text-sm font-medium py-3 rounded-xl">−1/−1</button>
+                  className="flex-1 btn-ghost text-red-400 text-sm font-medium py-3 rounded-xl">−1/−1</button>
               </div>
               <button onClick={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
-                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
+                className="btn-ghost text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
               <button onClick={() => { push(moveToGraveyard(state, me, cardMenu.uid)); setCardMenu(null); }}
-                className="bg-gray-800 hover:bg-gray-700 text-red-400 text-sm font-medium py-3 rounded-xl">💀 Graveyard</button>
+                className="btn-ghost text-red-400 text-sm font-medium py-3 rounded-xl">💀 Graveyard</button>
               <button onClick={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
-                className="bg-gray-800 hover:bg-gray-700 text-yellow-400 text-sm font-medium py-3 rounded-xl">
+                className="btn-ghost text-gold text-sm font-medium py-3 rounded-xl">
                 {cardMenu.isLand ? '⬆ → Spells' : '⬇ → Lands'}
               </button>
               <button onClick={() => { push(exileCard(state, me, cardMenu.uid)); setCardMenu(null); }}
-                className="bg-gray-800 hover:bg-gray-700 text-purple-400 text-sm font-medium py-3 rounded-xl">✦ Exile</button>
+                className="btn-ghost text-purple-400 text-sm font-medium py-3 rounded-xl">✦ Exile</button>
               {/* Block/Target — combat step only */}
               {state.step === 'combat' ? (
                 <>
@@ -937,8 +959,8 @@ export default function GameRoom() {
                       if (cardMenu.blocking) { push(setBlocking(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
                       else setPicker({ mode: 'block', forUid: cardMenu.uid });
                     }}
-                    className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
-                      ${cardMenu.blocking ? 'text-red-400' : 'text-gray-300'}`}>
+                    className={`btn-ghost text-sm font-medium py-3 rounded-xl
+                      ${cardMenu.blocking ? 'text-red-400' : 'text-[#c9a227]/60'}`}>
                     {cardMenu.blocking ? '⚔ Clear Block' : '⚔ Block…'}
                   </button>
                   <button
@@ -946,13 +968,13 @@ export default function GameRoom() {
                       if (cardMenu.targeting) { push(setTargeting(state, me as PlayerKey, cardMenu.uid, null)); setCardMenu(null); }
                       else setPicker({ mode: 'target', forUid: cardMenu.uid });
                     }}
-                    className={`bg-gray-800 hover:bg-gray-700 text-sm font-medium py-3 rounded-xl
-                      ${cardMenu.targeting ? 'text-purple-400' : 'text-gray-300'}`}>
+                    className={`btn-ghost text-sm font-medium py-3 rounded-xl
+                      ${cardMenu.targeting ? 'text-purple-400' : 'text-[#c9a227]/60'}`}>
                     {cardMenu.targeting ? '🎯 Clear Target' : '🎯 Target…'}
                   </button>
                 </>
               ) : (
-                <div className="col-span-2 text-center text-gray-600 text-xs py-2">
+                <div className="col-span-2 text-center text-[#c9a227]/25 text-xs py-2 font-display">
                   Block &amp; Target available in Combat step
                 </div>
               )}
@@ -974,11 +996,11 @@ export default function GameRoom() {
         >
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => { push(playCard(state, me, handSelected)); setHandSelected(null); }}
-              className="bg-green-700 hover:bg-green-600 active:bg-green-500 text-white font-bold py-4 rounded-xl text-sm">
+              className="btn-gold font-bold py-4 rounded-xl text-sm">
               ▶ Play
             </button>
             <button onClick={() => { push(discardCard(state, me, handSelected)); setHandSelected(null); }}
-              className="bg-gray-800 hover:bg-gray-700 text-red-400 font-bold py-4 rounded-xl text-sm">
+              className="btn-ghost text-red-400 font-bold py-4 rounded-xl text-sm">
               💀 Discard
             </button>
           </div>
@@ -1024,7 +1046,7 @@ function TokenInput({ tokenInput, setTokenInput, onCreate, onClose }: {
   return (
     <>
       <input autoFocus
-        className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
+        className="arena-input flex-1 px-3 py-2 text-sm"
         placeholder="Token name (e.g. 1/1 Goblin)"
         value={tokenInput}
         onChange={e => setTokenInput(e.target.value)}
@@ -1034,7 +1056,7 @@ function TokenInput({ tokenInput, setTokenInput, onCreate, onClose }: {
         }}
       />
       <button onClick={() => { if (tokenInput.trim()) onCreate(tokenInput.trim()); }}
-        className="bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-400 text-black font-bold px-4 py-2 rounded-lg text-sm">
+        className="btn-gold font-bold px-4 py-2 rounded-lg text-sm">
         Create
       </button>
     </>
