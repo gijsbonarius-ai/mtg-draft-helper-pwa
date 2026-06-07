@@ -732,10 +732,7 @@ export default function GameRoom() {
           {myState.hand.length > 0 && (
             <div className="flex gap-2 overflow-x-auto max-w-full pb-2">
               {myState.hand.map((card, i) => (
-                <div key={i} className="flex-shrink-0 cursor-pointer active:scale-95 transition-transform card-hover"
-                  onClick={() => {}}>
-                  <ZoomableCard name={card} className="w-20 h-28" />
-                </div>
+                <ZoomableCard key={i} name={card} className="w-20 h-28 flex-shrink-0 card-hover" />
               ))}
             </div>
           )}
