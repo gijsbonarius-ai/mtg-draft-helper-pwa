@@ -3,43 +3,146 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-950 text-white;
-    font-family: 'Crimson Text', Georgia, serif;
+  :root {
+    --gold: #c9a227;
+    --gold-light: #e0b84c;
+    --gold-dim: rgba(201,162,39,0.15);
+    --bg-base: #0d0d12;
+    --bg-panel: #13131a;
+    --bg-raised: #1a1a24;
+    --border-subtle: rgba(201,162,39,0.18);
+    --border-mid: rgba(201,162,39,0.35);
   }
 
-  h1, h2, h3 {
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: #0d0d12;
+    color: #e8e0d0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
     font-family: 'Cinzel', Georgia, serif;
   }
 }
 
+@layer components {
+  /* Gold beveled button */
+  .btn-gold {
+    @apply relative inline-flex items-center justify-center font-semibold tracking-wide
+           transition-all duration-200 select-none cursor-pointer;
+    background: linear-gradient(180deg, #d4a83a 0%, #b8901e 60%, #a07c10 100%);
+    border: 1px solid #e0b84c;
+    color: #0d0d12;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 16px rgba(201,162,39,0.25);
+    text-shadow: 0 1px 0 rgba(255,220,100,0.3);
+  }
+  .btn-gold:hover {
+    background: linear-gradient(180deg, #e0c050 0%, #c99a28 60%, #b08018 100%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 24px rgba(201,162,39,0.4), 0 0 20px rgba(201,162,39,0.2);
+  }
+  .btn-gold:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(201,162,39,0.2); }
+  .btn-gold:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  /* Ghost/outline button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center font-medium tracking-wide
+           transition-all duration-200 cursor-pointer;
+    background: transparent;
+    border: 1px solid var(--border-mid);
+    color: #c9a84c;
+    box-shadow: inset 0 0 0 0 rgba(201,162,39,0);
+  }
+  .btn-ghost:hover {
+    background: var(--gold-dim);
+    border-color: #c9a84c;
+    box-shadow: 0 0 12px rgba(201,162,39,0.15);
+  }
+  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Dark panel */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  /* Arena-style input */
+  .arena-input {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border-subtle);
+    color: #e8e0d0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .arena-input::placeholder { color: rgba(200,185,150,0.35); }
+  .arena-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,162,39,0.12), 0 0 16px rgba(201,162,39,0.08);
+  }
+
+  /* Card hover glow */
+  .card-hover {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7), 0 0 16px rgba(201,162,39,0.3);
+  }
+}
+
 @layer utilities {
+  /* Battlefield zones */
   .zone-felt {
-    background: radial-gradient(ellipse at 50% 0%, #2a5040 0%, #112518 80%);
-    box-shadow: inset 0 2px 16px rgba(0,0,0,0.5);
+    background: radial-gradient(ellipse at 50% 0%, #1c3828 0%, #0d1e14 80%);
+    box-shadow: inset 0 2px 20px rgba(0,0,0,0.6);
   }
-  .zone-grave {
-    background: radial-gradient(ellipse at 50% 50%, #2a1a08 0%, #0f0a04 100%);
-    box-shadow: inset 0 2px 12px rgba(0,0,0,0.6);
-  }
-  .zone-exile {
-    background: radial-gradient(ellipse at 50% 50%, #2a1040 0%, #0f0820 100%);
-    box-shadow: inset 0 2px 12px rgba(0,0,0,0.6);
+  .zone-opp {
+    background: radial-gradient(ellipse at 50% 100%, #1e1208 0%, #0c0c0c 70%);
   }
   .zone-hand {
-    background: linear-gradient(180deg, #0f1a2a 0%, #080f18 100%);
-    box-shadow: inset 0 4px 12px rgba(0,0,0,0.5);
+    background: linear-gradient(180deg, #0e1420 0%, #080c14 100%);
+    box-shadow: inset 0 4px 16px rgba(0,0,0,0.6);
   }
-  .card-shadow {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+  .zone-grave {
+    background: radial-gradient(ellipse at center, #1e1204 0%, #0a0704 100%);
   }
-  .card-glow {
-    box-shadow: 0 0 14px rgba(201,168,76,0.5), 0 2px 8px rgba(0,0,0,0.7);
+  .zone-exile {
+    background: radial-gradient(ellipse at center, #1a0e2e 0%, #0c0818 100%);
   }
-  .gold-border {
-    border-color: #c9a84c;
+
+  /* Gold tints */
+  .text-gold { color: #c9a227; }
+  .text-gold-light { color: #e0b84c; }
+  .border-gold { border-color: rgba(201,162,39,0.35); }
+  .border-gold-bright { border-color: #c9a227; }
+  .bg-gold-dim { background: rgba(201,162,39,0.1); }
+
+  /* Mana colors */
+  .mana-white { color: #F9FAF4; }
+  .mana-blue  { color: #0E68AB; }
+  .mana-black { color: #a0a0a0; }
+  .mana-red   { color: #D3202A; }
+  .mana-green { color: #00733E; }
+
+  /* Utility glows */
+  .glow-gold { box-shadow: 0 0 20px rgba(201,162,39,0.3); }
+  .glow-gold-sm { box-shadow: 0 0 10px rgba(201,162,39,0.2); }
+
+  /* Divider with centre label */
+  .divider-gold {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
-  .text-gold {
-    color: #c9a84c;
+  .divider-gold::before,
+  .divider-gold::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
   }
 }

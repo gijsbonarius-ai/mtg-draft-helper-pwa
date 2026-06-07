@@ -10,6 +10,35 @@ function generateRoomCode(): string {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
+// ── Reusable primitives ────────────────────────────────────────────────────
+
+function GoldDivider({ label }: { label?: string }) {
+  return (
+    <div className="divider-gold text-xs text-gold/60 tracking-widest uppercase">
+      {label}
+    </div>
+  );
+}
+
+function ArenaInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`arena-input w-full rounded-lg px-4 py-3 text-sm ${props.className ?? ''}`}
+    />
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-xs font-semibold tracking-widest uppercase text-gold/70 mb-2">
+      {children}
+    </label>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
 export default function Home() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -17,25 +46,25 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cardCount, setCardCount] = useState(90);
-  // After skip-to-play: show room code so second device can join
   const [createdGameRoom, setCreatedGameRoom] = useState<string | null>(null);
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="bg-gray-900 border border-red-700 rounded-xl p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Supabase not configured</h1>
-          <p className="text-gray-400 text-sm">
-            Create a <code className="bg-gray-800 px-1 rounded">.env</code> file with:<br />
-            <code className="bg-gray-800 px-1 rounded text-green-400 block mt-2 p-2 text-left">
-              VITE_SUPABASE_URL=https://xxx.supabase.co<br />
-              VITE_SUPABASE_ANON_KEY=eyJ...
-            </code>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0d0d12' }}>
+        <div className="panel rounded-2xl p-8 max-w-md w-full text-center border-red-900/60">
+          <h1 className="font-display text-xl text-red-400 mb-3">Supabase not configured</h1>
+          <p className="text-sm" style={{ color: 'rgba(200,185,150,0.7)' }}>
+            Create a <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-400">.env</code> file with:
           </p>
+          <pre className="mt-3 text-left bg-black/50 border border-white/8 rounded-lg p-3 text-xs text-green-400 leading-relaxed">
+VITE_SUPABASE_URL=https://xxx.supabase.co{'\n'}VITE_SUPABASE_ANON_KEY=eyJ...
+          </pre>
         </div>
       </div>
     );
   }
+
+  // ── Handlers (unchanged logic) ───────────────────────────────────────────
 
   async function handleSkipToDeckBuilder() {
     if (!name.trim()) { setError('Enter your name'); return; }
@@ -87,7 +116,6 @@ export default function Home() {
       if (gameRes.error) throw gameRes.error;
       localStorage.setItem(`draft_player_${roomCode}`, 'player1');
       localStorage.setItem(`draft_name_${roomCode}`, name.trim());
-      // Show the room code so a second device can join before navigating
       setCreatedGameRoom(roomCode);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed');
@@ -119,20 +147,13 @@ export default function Home() {
       const { data, error: err } = await supabase
         .from('draft_sessions').select('*').eq('room_code', code).single();
       if (err || !data) { setError('Room not found'); return; }
-
-      // If this device already has a role, just navigate to the right place
       const existing = localStorage.getItem(`draft_player_${code}`);
       if (existing) {
-        const dest = data.state.deckBuilds ? `/game/${code}` : `/draft/${code}`;
-        navigate(dest);
+        navigate(data.state.deckBuilds ? `/game/${code}` : `/draft/${code}`);
         return;
       }
-
-      // Join as player 2
       localStorage.setItem(`draft_player_${code}`, 'player2');
       localStorage.setItem(`draft_name_${code}`, name.trim());
-
-      // If decks are already built (skip-to-play), go straight to game
       if (data.state.deckBuilds?.player1 && data.state.deckBuilds?.player2) {
         navigate(`/game/${code}`);
       } else {
@@ -143,108 +164,218 @@ export default function Home() {
     } finally { setLoading(false); }
   }
 
-  // After skip-to-play: show room code screen
+  // ── Room code share screen ───────────────────────────────────────────────
+
   if (createdGameRoom) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-5 text-center">
+      <Screen>
+        <div className="w-full max-w-sm text-center space-y-6">
           <div>
-            <p className="text-gray-400 text-sm mb-2">Game room created! Share this code with the second device:</p>
-            <div className="font-mono text-4xl font-bold text-yellow-300 tracking-widest bg-gray-800 rounded-xl py-4 px-6 select-all">
+            <p className="font-display text-gold text-sm tracking-widest uppercase mb-1">Game Created</p>
+            <h2 className="font-display text-2xl text-white">Share with Player 2</h2>
+          </div>
+
+          {/* Room code display */}
+          <div
+            className="rounded-2xl py-6 px-8 border"
+            style={{
+              background: 'radial-gradient(ellipse at 50% 0%, rgba(201,162,39,0.08) 0%, transparent 70%), #13131a',
+              borderColor: 'rgba(201,162,39,0.4)',
+              boxShadow: '0 0 40px rgba(201,162,39,0.08), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            <div
+              className="font-mono text-5xl font-bold tracking-[0.25em] select-all"
+              style={{ color: '#e0b84c', textShadow: '0 0 20px rgba(224,184,76,0.4)' }}
+            >
               {createdGameRoom}
             </div>
-            <p className="text-gray-600 text-xs mt-2">The other device enters this code on the home screen and taps Join</p>
+            <p className="text-xs mt-3" style={{ color: 'rgba(200,185,150,0.45)' }}>
+              Player 2 enters this code on the home screen
+            </p>
           </div>
+
           <button
+            className="btn-gold w-full rounded-xl py-4 text-base font-display tracking-wide"
             onClick={() => navigate(`/game/${createdGameRoom}`)}
-            className="w-full bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-300 text-black font-bold py-3 rounded-xl text-base"
           >
-            ▶ Enter Game as Player 1
+            ▶ &nbsp;Enter as Player 1
           </button>
           <button
+            className="text-sm transition-colors"
+            style={{ color: 'rgba(200,185,150,0.45)' }}
             onClick={() => setCreatedGameRoom(null)}
-            className="text-gray-500 text-sm hover:text-gray-300"
           >
             ← Back
           </button>
         </div>
-      </div>
+      </Screen>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-yellow-400 tracking-tight">Cuby & The Wizards</h1>
-          <p className="text-gray-400 mt-1 text-sm">Winston Draft • 2 Players</p>
-        </div>
+  // ── Main home screen ─────────────────────────────────────────────────────
 
-        <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 space-y-4">
+  return (
+    <Screen>
+      <div className="w-full max-w-md space-y-7">
+
+        {/* Header */}
+        <header className="text-center space-y-2 pt-2">
+          {/* Decorative top rule */}
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <span className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(90deg, transparent, rgba(201,162,39,0.5))' }} />
+            <span className="text-gold/50 text-xs tracking-[0.3em]">✦</span>
+            <span className="h-px flex-1 max-w-[60px]" style={{ background: 'linear-gradient(90deg, rgba(201,162,39,0.5), transparent)' }} />
+          </div>
+
+          <h1
+            className="font-display text-4xl sm:text-5xl font-bold tracking-tight leading-none"
+            style={{ color: '#e0b84c', textShadow: '0 0 30px rgba(224,184,76,0.25), 0 2px 4px rgba(0,0,0,0.8)' }}
+          >
+            Cuby &amp; The Wizards
+          </h1>
+          <p className="text-sm tracking-widest uppercase" style={{ color: 'rgba(200,185,150,0.5)' }}>
+            Winston Draft &nbsp;·&nbsp; 2 Players &nbsp;·&nbsp; 540-Card Cube
+          </p>
+        </header>
+
+        {/* Main panel */}
+        <div
+          className="rounded-2xl p-6 space-y-5"
+          style={{
+            background: 'linear-gradient(180deg, #15151e 0%, #11111a 100%)',
+            border: '1px solid rgba(201,162,39,0.2)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+          }}
+        >
+          {/* Summoner name */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Your name</label>
-            <input
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500"
-              placeholder="e.g. Gandalf"
+            <SectionLabel>Summoner Name</SectionLabel>
+            <ArenaInput
+              placeholder="Enter your name…"
               value={name}
               onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
             />
           </div>
 
+          {/* Card count pills */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Cards in this draft</label>
+            <SectionLabel>Cards in Draft</SectionLabel>
             <div className="flex gap-2 flex-wrap">
               {([90, 180, 270, 360, 450, 540] as const).map(n => (
-                <button key={n} type="button" onClick={() => setCardCount(n)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${cardCount === n ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setCardCount(n)}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150"
+                  style={
+                    cardCount === n
+                      ? {
+                          background: 'linear-gradient(180deg, #d4a83a, #a87c10)',
+                          border: '1px solid #e0b84c',
+                          color: '#0d0d12',
+                          fontWeight: 600,
+                          boxShadow: '0 0 12px rgba(201,162,39,0.3)',
+                        }
+                      : {
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(201,162,39,0.18)',
+                          color: 'rgba(200,185,150,0.65)',
+                        }
+                  }
+                >
                   {n}
                 </button>
               ))}
             </div>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {/* Error */}
+          {error && (
+            <div
+              className="rounded-lg px-4 py-2.5 text-sm flex items-center gap-2"
+              style={{ background: 'rgba(211,32,42,0.12)', border: '1px solid rgba(211,32,42,0.3)', color: '#f87171' }}
+            >
+              <span>⚠</span> {error}
+            </div>
+          )}
 
-          <button onClick={handleCreate} disabled={loading}
-            className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-gray-900 font-bold py-3 rounded-lg transition-colors">
-            {loading ? 'Creating…' : 'Create New Draft'}
+          {/* Primary CTA */}
+          <button
+            className="btn-gold w-full rounded-xl py-4 text-base font-display tracking-wide"
+            onClick={handleCreate}
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Creating…
+              </span>
+            ) : (
+              '⚔ &nbsp;Create New Draft'
+            )}
           </button>
 
-          <div className="flex gap-2">
-            <button onClick={handleSkipToDeckBuilder} disabled={loading}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-xs py-2 rounded-lg border border-gray-700">
-              🧪 Skip to Deck Builder
-            </button>
-            <button onClick={handleSkipToPlay} disabled={loading}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-400 text-xs py-2 rounded-lg border border-gray-700">
-              🎮 Skip to Play
-            </button>
+          {/* Dev shortcuts */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Skip to Deck Builder', icon: '🧪', fn: handleSkipToDeckBuilder },
+              { label: 'Skip to Play', icon: '🎮', fn: handleSkipToPlay },
+            ].map(({ label, icon, fn }) => (
+              <button
+                key={label}
+                className="btn-ghost rounded-lg py-2 text-xs"
+                onClick={fn}
+                disabled={loading}
+              >
+                {icon} {label}
+              </button>
+            ))}
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-700" /></div>
-            <div className="relative flex justify-center"><span className="bg-gray-900 px-3 text-gray-500 text-sm">or join existing</span></div>
-          </div>
+          <GoldDivider label="or join existing" />
 
+          {/* Join row */}
           <div className="flex gap-2">
-            <input
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white uppercase tracking-widest focus:outline-none focus:border-yellow-500 placeholder-gray-600"
+            <ArenaInput
+              className="flex-1 uppercase tracking-[0.25em] font-mono text-gold placeholder-shown:tracking-normal"
               placeholder="ROOM CODE"
               value={joinCode}
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
               onKeyDown={e => e.key === 'Enter' && handleJoin()}
             />
-            <button onClick={handleJoin} disabled={loading}
-              className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-bold px-4 rounded-lg">
+            <button
+              className="btn-ghost rounded-lg px-5 font-semibold text-sm whitespace-nowrap"
+              onClick={handleJoin}
+              disabled={loading}
+            >
               Join
             </button>
           </div>
         </div>
 
-        <p className="text-center text-gray-600 text-xs">540-card Power Cube · Scryfall card images</p>
+        {/* Footer */}
+        <p className="text-center text-xs" style={{ color: 'rgba(200,185,150,0.3)' }}>
+          Scryfall card images &nbsp;·&nbsp; Open source
+        </p>
       </div>
+    </Screen>
+  );
+}
+
+// ── Shared screen wrapper ──────────────────────────────────────────────────
+
+function Screen({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        background: 'radial-gradient(ellipse at 50% 0%, #151520 0%, #0d0d12 60%)',
+      }}
+    >
+      {children}
     </div>
   );
 }
