@@ -145,12 +145,12 @@ export function untapAll(state: GameState, player: PlayerKey): GameState {
   return s;
 }
 
-export function addStunCounter(state: GameState, player: PlayerKey, uid: string): GameState {
+export function addStunCounter(state: GameState, player: PlayerKey, uid: string, delta = 1): GameState {
   const s = clone(state);
   const card = s.players[player].battlefield.find(c => c.uid === uid);
   if (card) {
-    card.stunCounters = (card.stunCounters ?? 0) + 1;
-    card.tapped = true;
+    card.stunCounters = Math.max(0, (card.stunCounters ?? 0) + delta);
+    if (delta > 0) card.tapped = true;
   }
   return s;
 }
@@ -260,12 +260,12 @@ export function adjustPoison(state: GameState, player: PlayerKey, delta: number)
 const STEPS: GameStep[] = ['untap', 'upkeep', 'draw', 'main1', 'combat', 'main2', 'end'];
 
 export function nextStep(state: GameState): GameState {
-  const s = clone(state);
+  let s = clone(state);
   const idx = STEPS.indexOf(s.step);
   if (idx < STEPS.length - 1) {
     s.step = STEPS[idx + 1];
     if (s.step === 'untap') {
-      untapAll(s, s.activePlayer);
+      s = untapAll(s, s.activePlayer);
     }
   } else {
     // End of turn → next player
@@ -273,18 +273,18 @@ export function nextStep(state: GameState): GameState {
     s.step = 'untap';
     s.turn++;
     addLog(s, `Turn ${s.turn} — ${s.activePlayer}'s turn.`);
-    untapAll(s, s.activePlayer);
+    s = untapAll(s, s.activePlayer);
   }
   return s;
 }
 
 export function endTurn(state: GameState): GameState {
-  const s = clone(state);
+  let s = clone(state);
   s.activePlayer = s.activePlayer === 'player1' ? 'player2' : 'player1';
   s.step = 'untap';
   s.turn++;
-  s.players[s.activePlayer].battlefield.forEach(c => { c.tapped = false; });
   addLog(s, `Turn ${s.turn} — ${s.activePlayer}'s turn.`);
+  s = untapAll(s, s.activePlayer);
   return s;
 }
 

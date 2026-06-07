@@ -952,11 +952,16 @@ export default function GameRoom() {
                   className="flex-1 btn-ghost text-green-400 text-sm font-medium py-3 rounded-xl">+1/+1</button>
                 <button onClick={() => push(addCounter(state, me, cardMenu.uid, -1))}
                   className="flex-1 btn-ghost text-red-400 text-sm font-medium py-3 rounded-xl">−1/−1</button>
-                <button onClick={() => push(addStunCounter(state, me, cardMenu.uid))}
-                  className="flex-1 btn-ghost text-yellow-400 text-sm font-medium py-3 rounded-xl"
-                  title="Stun counter: card stays tapped next untap step">
-                  ⚡ Stun {(cardMenu.stunCounters ?? 0) > 0 ? `(${cardMenu.stunCounters})` : ''}
-                </button>
+                <div className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-yellow-400 text-xs font-medium">⚡ Stun ({cardMenu.stunCounters ?? 0})</span>
+                  <div className="flex gap-1 w-full">
+                    <button onClick={() => push(addStunCounter(state, me, cardMenu.uid, 1))}
+                      className="flex-1 btn-ghost text-yellow-400 text-sm font-medium py-2 rounded-xl">+</button>
+                    <button onClick={() => push(addStunCounter(state, me, cardMenu.uid, -1))}
+                      disabled={(cardMenu.stunCounters ?? 0) === 0}
+                      className="flex-1 btn-ghost text-yellow-600 text-sm font-medium py-2 rounded-xl disabled:opacity-30">−</button>
+                  </div>
+                </div>
               </div>
               <button onClick={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="btn-ghost text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
