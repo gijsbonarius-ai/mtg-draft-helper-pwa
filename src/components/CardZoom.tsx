@@ -57,8 +57,8 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
         <img
           src={src}
           alt={name}
-          className="rounded-xl object-cover shadow-2xl"
-          style={{ maxWidth: 'min(90vw, 500px)', maxHeight: '90vh' }}
+          className="rounded-xl shadow-2xl"
+          style={{ maxWidth: 'min(90vw, 480px)', maxHeight: '88vh', width: 'auto', height: 'auto' }}
           onError={() => setErrored(true)}
           onClick={e => e.stopPropagation()}
           onTouchEnd={e => e.stopPropagation()}
@@ -104,7 +104,7 @@ export function ZoomableCard({ name, face, className = '', style }: ZoomableCard
         </div>
       ) : (
         <img src={src} alt={name} draggable={false}
-          className={`rounded-lg object-cover cursor-pointer ${className}`}
+          className={`rounded-lg object-contain cursor-pointer ${className}`}
           style={style}
           onError={() => setErrored(true)}
           onClick={open}
@@ -163,7 +163,7 @@ export function LongPressZoomCard({ name, face, className = '', style, onClick }
         </div>
       ) : (
         <img src={src} alt={name} draggable={false}
-          className={`rounded object-cover cursor-pointer ${className}`}
+          className={`rounded object-contain cursor-pointer ${className}`}
           style={style}
           onError={() => setErrored(true)}
           onContextMenu={e => { e.preventDefault(); setZoomed(true); }}
