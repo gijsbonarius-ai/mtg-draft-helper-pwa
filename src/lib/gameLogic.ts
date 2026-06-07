@@ -107,6 +107,7 @@ export function playCard(state: GameState, player: PlayerKey, handIdx: number): 
     name: card,
     tapped: false,
     counters: 0,
+    stunCounters: 0,
     isToken: false,
     note: '',
     isLand: detectLand(card),
@@ -134,7 +135,23 @@ export function tapToggle(state: GameState, player: PlayerKey, uid: string): Gam
 
 export function untapAll(state: GameState, player: PlayerKey): GameState {
   const s = clone(state);
-  s.players[player].battlefield.forEach(c => { c.tapped = false; });
+  s.players[player].battlefield.forEach(c => {
+    if ((c.stunCounters ?? 0) > 0) {
+      c.stunCounters = c.stunCounters - 1;
+    } else {
+      c.tapped = false;
+    }
+  });
+  return s;
+}
+
+export function addStunCounter(state: GameState, player: PlayerKey, uid: string): GameState {
+  const s = clone(state);
+  const card = s.players[player].battlefield.find(c => c.uid === uid);
+  if (card) {
+    card.stunCounters = (card.stunCounters ?? 0) + 1;
+    card.tapped = true;
+  }
   return s;
 }
 
@@ -209,6 +226,7 @@ export function createToken(state: GameState, player: PlayerKey, name: string): 
     tapped: false,
     counters: 0,
     isToken: true,
+    stunCounters: 0,
     note: '',
     isLand: false,
     transformed: false,
@@ -323,7 +341,7 @@ export function zoneToBattlefield(state: GameState, player: PlayerKey, zone: 'gr
   const [name] = p[zone].splice(idx, 1);
   p.battlefield.push({
     uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name, tapped: false, counters: 0, isToken: false, note: '',
+    name, tapped: false, counters: 0, stunCounters: 0, isToken: false, note: '',
     isLand: detectLand(name), transformed: false,
   });
   addLog(s, `${name} → ${player}'s battlefield from ${zone}.`);

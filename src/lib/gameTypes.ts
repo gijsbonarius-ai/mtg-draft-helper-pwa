@@ -11,6 +11,7 @@ export interface BattlefieldCard {
   note: string;
   isLand: boolean;
   transformed: boolean;    // true = showing back face
+  stunCounters: number;    // card stays tapped during untap step while > 0; one is removed each untap
   blocking?: string;       // UID of opponent creature this is blocking
   targeting?: string;      // UID of opponent creature, or 'player1'/'player2'
 }

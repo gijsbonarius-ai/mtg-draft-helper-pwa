@@ -7,7 +7,7 @@ import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gam
 import type { DraftState } from '../lib/types';
 import {
   initGame, drawOpeningHand, mulligan, keepHand,
-  drawCard, playCard, discardCard, tapToggle, addCounter,
+  drawCard, playCard, discardCard, tapToggle, addCounter, untapAll, addStunCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
   toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones, transformCard,
@@ -210,6 +210,11 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
         <span className={`absolute top-0 right-0 text-xs font-bold px-1 rounded leading-tight font-display
           ${card.counters > 0 ? 'bg-green-700 text-[#e0b84c]' : 'bg-red-800 text-white'}`}>
           {card.counters > 0 ? '+' : ''}{card.counters}
+        </span>
+      )}
+      {(card.stunCounters ?? 0) > 0 && (
+        <span className="absolute top-0 left-0 bg-yellow-500 text-black text-[9px] font-bold px-1 rounded leading-tight">
+          ⚡{card.stunCounters}
         </span>
       )}
       {card.isToken && (
@@ -480,10 +485,10 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: {
 
 // ── Controls strip ────────────────────────────────────────────────────────────
 
-function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, onConcede }: {
+function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, onUntapAll, onConcede }: {
   state: GameState; me: PlayerKey; acting: boolean;
   onNext: () => void; onEndTurn: () => void; onDraw: () => void;
-  onToken: () => void; onConcede: () => void;
+  onToken: () => void; onUntapAll: () => void; onConcede: () => void;
 }) {
   const opp: PlayerKey = me === 'player1' ? 'player2' : 'player1';
   const oppState = state.players[opp];
@@ -506,6 +511,10 @@ function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, 
         </span>
       )}
       <div className="flex-1" />
+      <button onClick={onUntapAll} disabled={acting}
+        className="btn-ghost disabled:opacity-50 text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        ↺ Untap All
+      </button>
       <button onClick={onDraw} disabled={acting}
         className="btn-ghost disabled:opacity-50 text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         Draw
@@ -800,6 +809,7 @@ export default function GameRoom() {
                 onEndTurn={() => push(endTurn(state))}
                 onDraw={() => push(drawCard(state, me))}
                 onToken={() => setShowTokenInput(v => !v)}
+                onUntapAll={() => push(untapAll(state, me))}
                 onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
               />
             </div>
@@ -877,6 +887,7 @@ export default function GameRoom() {
                 onEndTurn={() => push(endTurn(state))}
                 onDraw={() => push(drawCard(state, me))}
                 onToken={() => setShowTokenInput(v => !v)}
+                onUntapAll={() => push(untapAll(state, me))}
                 onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
               />
             </div>
@@ -941,6 +952,11 @@ export default function GameRoom() {
                   className="flex-1 btn-ghost text-green-400 text-sm font-medium py-3 rounded-xl">+1/+1</button>
                 <button onClick={() => push(addCounter(state, me, cardMenu.uid, -1))}
                   className="flex-1 btn-ghost text-red-400 text-sm font-medium py-3 rounded-xl">−1/−1</button>
+                <button onClick={() => push(addStunCounter(state, me, cardMenu.uid))}
+                  className="flex-1 btn-ghost text-yellow-400 text-sm font-medium py-3 rounded-xl"
+                  title="Stun counter: card stays tapped next untap step">
+                  ⚡ Stun {(cardMenu.stunCounters ?? 0) > 0 ? `(${cardMenu.stunCounters})` : ''}
+                </button>
               </div>
               <button onClick={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="btn-ghost text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
