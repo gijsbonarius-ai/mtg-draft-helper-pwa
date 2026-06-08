@@ -48,7 +48,7 @@ function PlainCardImg({ name, transformed = false, className = '', style }: {
   );
 
   return <img src={src} alt={name} draggable={false}
-    className={`rounded object-cover ${className}`} style={style}
+    className={`rounded object-contain ${className}`} style={style}
     onError={handleError} />;
 }
 
@@ -119,8 +119,8 @@ function CardDetailModal({ title, imageName, transformed = false, onClose, onPre
       {/* Card image */}
       <div className="flex-1 flex items-center justify-center px-4 min-h-0">
         <PlainCardImg name={imageName} transformed={transformed}
-          className="rounded-xl shadow-2xl object-contain glow-gold-sm"
-          style={{ maxHeight: '52vh', maxWidth: 'min(85vw, 320px)' }} />
+          className="rounded-xl shadow-2xl glow-gold-sm"
+          style={{ maxHeight: '70vh', maxWidth: 'min(85vw, 360px)', width: 'auto', height: 'auto' }} />
       </div>
 
       {/* Action buttons */}
