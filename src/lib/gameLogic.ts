@@ -358,3 +358,26 @@ export function swapZones(state: GameState, player: PlayerKey, from: 'graveyard'
   addLog(s, `${name} → ${player}'s ${to}.`);
   return s;
 }
+
+export function millCards(state: GameState, player: PlayerKey, count: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const actual = Math.min(count, p.library.length);
+  const milled = p.library.splice(0, actual);
+  p.graveyard.push(...milled);
+  addLog(s, `${player} milled ${actual} card${actual !== 1 ? 's' : ''}.`);
+  return s;
+}
+
+// keepOnTop: cards to keep on top (in order), bottomCards: cards to put on bottom
+export function resolveScry(state: GameState, player: PlayerKey, keepOnTop: string[], putOnBottom: string[]): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  // Remove scryed cards from front of library then prepend/append as decided
+  const total = keepOnTop.length + putOnBottom.length;
+  p.library.splice(0, total);
+  p.library.unshift(...keepOnTop);
+  p.library.push(...putOnBottom);
+  addLog(s, `${player} scryed ${total}.`);
+  return s;
+}

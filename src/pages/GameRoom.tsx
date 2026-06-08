@@ -11,6 +11,7 @@ import {
   moveToGraveyard, returnToHand, exileCard, graveToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
   toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones, transformCard,
+  millCards, resolveScry,
 } from '../lib/gameLogic';
 
 const STEP_LABELS: Record<GameStep, string> = {
@@ -485,10 +486,10 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: {
 
 // ── Controls strip ────────────────────────────────────────────────────────────
 
-function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, onUntapAll, onConcede }: {
+function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, onUntapAll, onScry, onMill, onConcede }: {
   state: GameState; me: PlayerKey; acting: boolean;
   onNext: () => void; onEndTurn: () => void; onDraw: () => void;
-  onToken: () => void; onUntapAll: () => void; onConcede: () => void;
+  onToken: () => void; onUntapAll: () => void; onScry: () => void; onMill: () => void; onConcede: () => void;
 }) {
   const opp: PlayerKey = me === 'player1' ? 'player2' : 'player1';
   const oppState = state.players[opp];
@@ -523,6 +524,14 @@ function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, 
         className="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         + Token
       </button>
+      <button onClick={onScry}
+        className="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        Scry
+      </button>
+      <button onClick={onMill}
+        className="btn-ghost text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+        Mill
+      </button>
       <button onClick={onConcede}
         className="btn-ghost text-red-400 hover:text-red-300 text-xs px-3 py-2 rounded-lg whitespace-nowrap">
         ⚐
@@ -545,6 +554,9 @@ export default function GameRoom() {
   const [zoneView, setZoneView] = useState<{ player: PlayerKey; zone: 'graveyard' | 'exile' } | null>(null);
   const [tokenInput, setTokenInput] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
+  const [showScryInput, setShowScryInput] = useState(false);
+  const [scryCards_, setScryCards] = useState<string[] | null>(null);
+  const [showMillModal, setShowMillModal] = useState(false);
   const [showLog, setShowLog] = useState(false);
   // Picker: 'block' | 'target' or null
   const [picker, setPicker] = useState<{ mode: 'block' | 'target'; forUid: string } | null>(null);
@@ -810,17 +822,31 @@ export default function GameRoom() {
                 onDraw={() => push(drawCard(state, me))}
                 onToken={() => setShowTokenInput(v => !v)}
                 onUntapAll={() => push(untapAll(state, me))}
+                onScry={() => { setShowScryInput(v => !v); setShowTokenInput(false); }}
+                onMill={() => { setShowMillModal(true); setShowTokenInput(false); setShowScryInput(false); }}
                 onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
               />
             </div>
 
-            {/* Token input (mobile only) */}
+            {/* Token / Scry input (mobile only) */}
             {showTokenInput && (
               <div className="lg:hidden bg-[#13131a] border-b px-3 py-2 flex gap-2 shrink-0"
                 style={{ borderColor: 'var(--border-subtle)' }}>
                 <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
                   onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
                   onClose={() => setShowTokenInput(false)} />
+              </div>
+            )}
+            {showScryInput && (
+              <div className="lg:hidden bg-[#13131a] border-b px-3 py-2 flex gap-2 shrink-0"
+                style={{ borderColor: 'var(--border-subtle)' }}>
+                <ScryInput
+                  onScry={n => {
+                    const top = myState.library.slice(0, n);
+                    setScryCards(top);
+                    setShowScryInput(false);
+                  }}
+                  onClose={() => setShowScryInput(false)} />
               </div>
             )}
 
@@ -888,16 +914,29 @@ export default function GameRoom() {
                 onDraw={() => push(drawCard(state, me))}
                 onToken={() => setShowTokenInput(v => !v)}
                 onUntapAll={() => push(untapAll(state, me))}
+                onScry={() => { setShowScryInput(v => !v); setShowTokenInput(false); }}
+                onMill={() => { setShowMillModal(true); setShowTokenInput(false); setShowScryInput(false); }}
                 onConcede={() => { if (window.confirm('Concede the game?')) push(concede(state, me)); }}
               />
             </div>
 
-            {/* Token input (desktop) */}
+            {/* Token / Scry input (desktop) */}
             {showTokenInput && (
               <div className="border-b px-3 py-2 flex gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
                 <TokenInput tokenInput={tokenInput} setTokenInput={setTokenInput}
                   onCreate={name => { push(createToken(state, me, name)); setTokenInput(''); setShowTokenInput(false); }}
                   onClose={() => setShowTokenInput(false)} />
+              </div>
+            )}
+            {showScryInput && (
+              <div className="border-b px-3 py-2 flex gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                <ScryInput
+                  onScry={n => {
+                    const top = myState.library.slice(0, n);
+                    setScryCards(top);
+                    setShowScryInput(false);
+                  }}
+                  onClose={() => setShowScryInput(false)} />
               </div>
             )}
 
@@ -1032,6 +1071,28 @@ export default function GameRoom() {
         </CardDetailModal>
       )}
 
+      {scryCards_ && (
+        <ScryModal
+          cards={scryCards_}
+          onResolve={(keepOnTop, putOnBottom) => {
+            push(resolveScry(state, me as PlayerKey, keepOnTop, putOnBottom));
+            setScryCards(null);
+          }}
+          onClose={() => setScryCards(null)}
+        />
+      )}
+
+      {showMillModal && (
+        <MillModal
+          onMill={(count, target) => {
+            const opp: PlayerKey = (me as PlayerKey) === 'player1' ? 'player2' : 'player1';
+            push(millCards(state, target === 'opp' ? opp : me as PlayerKey, count));
+            setShowMillModal(false);
+          }}
+          onClose={() => setShowMillModal(false)}
+        />
+      )}
+
       {/* Zone view modal */}
       {zoneView && (() => {
         const isMyZone = zoneView.player === me;
@@ -1059,6 +1120,107 @@ export default function GameRoom() {
         />
       )}
     </div>
+  );
+}
+
+// ── ScryModal ────────────────────────────────────────────────────────────────
+
+function ScryModal({ cards, onResolve, onClose }: {
+  cards: string[];
+  onResolve: (keepOnTop: string[], putOnBottom: string[]) => void;
+  onClose: () => void;
+}) {
+  const [decisions, setDecisions] = useState<('top' | 'bottom')[]>(cards.map(() => 'top'));
+
+  function toggle(i: number) {
+    setDecisions(d => d.map((v, idx) => idx === i ? (v === 'top' ? 'bottom' : 'top') : v));
+  }
+
+  function confirm() {
+    const keepOnTop = cards.filter((_, i) => decisions[i] === 'top');
+    const putOnBottom = cards.filter((_, i) => decisions[i] === 'bottom');
+    onResolve(keepOnTop, putOnBottom);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="panel rounded-2xl p-5 w-full max-w-sm space-y-4" style={{ borderColor: 'var(--border-mid)' }}
+        onClick={e => e.stopPropagation()}>
+        <h3 className="font-display text-gold text-center font-bold">Scry {cards.length}</h3>
+        <p className="text-xs text-center" style={{ color: 'rgba(200,185,150,0.5)' }}>
+          Tap each card to send it to the bottom
+        </p>
+        <div className="space-y-2">
+          {cards.map((card, i) => (
+            <button key={i} onClick={() => toggle(i)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                decisions[i] === 'top'
+                  ? 'btn-ghost text-[#e0b84c]'
+                  : 'btn-ghost text-gray-500 line-through'
+              }`}>
+              <span>{card}</span>
+              <span className="text-xs ml-2 shrink-0">{decisions[i] === 'top' ? '↑ Keep top' : '↓ Put bottom'}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-ghost flex-1 py-3 rounded-xl text-sm">Cancel</button>
+          <button onClick={confirm} className="btn-gold flex-1 py-3 rounded-xl text-sm font-bold">Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MillModal ─────────────────────────────────────────────────────────────────
+
+function MillModal({ onMill, onClose }: {
+  onMill: (count: number, target: 'self' | 'opp') => void;
+  onClose: () => void;
+}) {
+  const [count, setCount] = useState(1);
+  const [target, setTarget] = useState<'self' | 'opp'>('opp');
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="panel rounded-2xl p-5 w-full max-w-xs space-y-4" style={{ borderColor: 'var(--border-mid)' }}
+        onClick={e => e.stopPropagation()}>
+        <h3 className="font-display text-gold text-center font-bold">Mill</h3>
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={() => setCount(c => Math.max(1, c - 1))} className="btn-ghost w-10 h-10 rounded-xl text-lg">−</button>
+          <span className="text-2xl font-bold text-[#e0b84c] w-10 text-center">{count}</span>
+          <button onClick={() => setCount(c => c + 1)} className="btn-ghost w-10 h-10 rounded-xl text-lg">+</button>
+        </div>
+        <div className="flex gap-2">
+          {(['opp', 'self'] as const).map(t => (
+            <button key={t} onClick={() => setTarget(t)}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${target === t ? 'btn-gold' : 'btn-ghost'}`}>
+              {t === 'opp' ? 'Opponent' : 'Yourself'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="btn-ghost flex-1 py-3 rounded-xl text-sm">Cancel</button>
+          <button onClick={() => onMill(count, target)} className="btn-gold flex-1 py-3 rounded-xl text-sm font-bold">Mill</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ScryInput helper ──────────────────────────────────────────────────────────
+
+function ScryInput({ onScry, onClose }: { onScry: (n: number) => void; onClose: () => void }) {
+  const [count, setCount] = useState(1);
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setCount(c => Math.max(1, c - 1))} className="btn-ghost w-9 h-9 rounded-lg text-lg">−</button>
+        <span className="text-[#e0b84c] font-bold w-8 text-center">{count}</span>
+        <button onClick={() => setCount(c => c + 1)} className="btn-ghost w-9 h-9 rounded-lg text-lg">+</button>
+        <button onClick={() => onScry(count)} className="btn-gold font-bold px-4 py-2 rounded-lg text-sm">Scry</button>
+        <button onClick={onClose} className="btn-ghost px-3 py-2 rounded-lg text-sm">✕</button>
+      </div>
+    </>
   );
 }
 
