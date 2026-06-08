@@ -122,7 +122,7 @@ function CardDetailModal({ title, imageName, transformed = false, onClose, onPre
         <div className="flex items-center justify-center px-4 pt-3 pb-2">
           <PlainCardImg name={imageName} transformed={transformed}
             className="rounded-xl shadow-2xl glow-gold-sm"
-            style={{ maxHeight: '38vh', maxWidth: 'min(85vw, 280px)', width: 'auto', height: 'auto' }} />
+            style={{ maxHeight: '52vh', maxWidth: 'min(85vw, 360px)', width: 'auto', height: 'auto' }} />
         </div>
 
         {/* Action buttons */}
