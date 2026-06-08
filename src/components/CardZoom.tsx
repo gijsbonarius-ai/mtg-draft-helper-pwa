@@ -14,6 +14,13 @@ interface ZoomOverlayProps {
 
 export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
   const [errored, setErrored] = useState(false);
+  // Block closing for a short window after mount so the opening touch doesn't immediately close
+  const canClose = useRef(false);
+  useEffect(() => {
+    const t = setTimeout(() => { canClose.current = true; }, 300);
+    return () => clearTimeout(t);
+  }, []);
+
   const src = scryfallUrl(name, face === 'back' && !errored);
 
   useEffect(() => {
@@ -22,23 +29,15 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  function stopAll(e: React.TouchEvent | React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center p-4"
-      onClick={e => { stopAll(e); onClose(); }}
-      onTouchEnd={e => { stopAll(e); onClose(); }}
-      onTouchStart={e => e.stopPropagation()}
+      onClick={() => { if (canClose.current) onClose(); }}
     >
       <button
         className="absolute top-4 right-4 w-14 h-14 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-2xl z-[101]"
         aria-label="Close"
-        onClick={e => { stopAll(e); onClose(); }}
-        onTouchEnd={e => { stopAll(e); onClose(); }}
+        onClick={e => { e.stopPropagation(); onClose(); }}
       >
         ✕
       </button>
@@ -48,8 +47,6 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
           className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
           style={{ width: 'min(80vw, 340px)', minHeight: '180px' }}
           onClick={e => e.stopPropagation()}
-          onTouchEnd={e => e.stopPropagation()}
-          onTouchStart={e => e.stopPropagation()}
         >
           <span className="text-gray-300 text-sm text-center">{name}</span>
         </div>
@@ -61,8 +58,6 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
           style={{ maxWidth: 'min(90vw, 480px)', maxHeight: '88vh', width: 'auto', height: 'auto' }}
           onError={() => setErrored(true)}
           onClick={e => e.stopPropagation()}
-          onTouchEnd={e => e.stopPropagation()}
-          onTouchStart={e => e.stopPropagation()}
         />
       )}
 
@@ -108,6 +103,7 @@ export function ZoomableCard({ name, face, className = '', style }: ZoomableCard
           style={style}
           onError={() => setErrored(true)}
           onClick={open}
+          onTouchEnd={e => { e.preventDefault(); open(); }}
         />
       )}
       {zoomed && <ZoomOverlay name={name} face={face} onClose={close} />}
