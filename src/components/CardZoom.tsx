@@ -28,8 +28,8 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
-      style={TAP_STYLE}
+      className="fixed inset-0 z-[100] bg-black/90"
+      style={{ ...TAP_STYLE, display: 'grid', placeItems: 'center', padding: '16px' }}
       onClick={onClose}
     >
       {/* Close button */}
@@ -41,29 +41,29 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
         ✕
       </button>
 
-      {/* Card image — stopPropagation so tapping the card doesn't close */}
-      {errored && face !== 'back' ? (
-        <div
-          className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
-          style={{ width: 'min(80vw, 340px)', minHeight: '180px' }}
-          onClick={e => e.stopPropagation()}
-        >
-          <span className="text-gray-300 text-sm text-center">{name}</span>
-        </div>
-      ) : (
-        <img
-          src={src}
-          alt={name}
-          className="rounded-xl shadow-2xl"
-          style={{ maxWidth: 'min(90vw, 480px)', maxHeight: '88vh', width: 'auto', height: 'auto' }}
-          onError={() => setErrored(true)}
-          onClick={e => e.stopPropagation()}
-        />
-      )}
-
-      <p className="mt-3 text-white text-sm font-semibold text-center max-w-xs" onClick={e => e.stopPropagation()}>
-        {name}
-      </p>
+      {/* Card + name — stopPropagation so tapping the card itself doesn't close */}
+      <div
+        className="flex flex-col items-center gap-3"
+        onClick={e => e.stopPropagation()}
+      >
+        {errored && face !== 'back' ? (
+          <div
+            className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
+            style={{ width: 'min(80vw, 340px)', minHeight: '180px' }}
+          >
+            <span className="text-gray-300 text-sm text-center">{name}</span>
+          </div>
+        ) : (
+          <img
+            src={src}
+            alt={name}
+            className="rounded-xl shadow-2xl"
+            style={{ maxWidth: 'min(90vw, 480px)', maxHeight: '85vh', width: 'auto', height: 'auto', display: 'block' }}
+            onError={() => setErrored(true)}
+          />
+        )}
+        <p className="text-white text-sm font-semibold text-center max-w-xs">{name}</p>
+      </div>
     </div>,
     document.body
   );

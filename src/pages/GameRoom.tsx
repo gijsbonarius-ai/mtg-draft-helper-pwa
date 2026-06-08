@@ -116,26 +116,29 @@ function CardDetailModal({ title, imageName, transformed = false, onClose, onPre
           className="btn-ghost w-10 h-10 flex items-center justify-center rounded-full text-xl">✕</button>
       </div>
 
-      {/* Card image */}
-      <div className="flex-1 flex items-center justify-center px-4 min-h-0">
-        <PlainCardImg name={imageName} transformed={transformed}
-          className="rounded-xl shadow-2xl glow-gold-sm"
-          style={{ maxHeight: '70vh', maxWidth: 'min(85vw, 360px)', width: 'auto', height: 'auto' }} />
-      </div>
-
-      {/* Action buttons */}
-      {children && (
-        <div className="shrink-0 px-4 pb-4 pt-3 space-y-2">
-          {children}
+      {/* Scrollable body: image + actions */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Card image — fixed height so buttons always visible */}
+        <div className="flex items-center justify-center px-4 pt-3 pb-2">
+          <PlainCardImg name={imageName} transformed={transformed}
+            className="rounded-xl shadow-2xl glow-gold-sm"
+            style={{ maxHeight: '38vh', maxWidth: 'min(85vw, 280px)', width: 'auto', height: 'auto' }} />
         </div>
-      )}
 
-      {/* Prev/Next nav */}
-      <div className="flex gap-2 px-4 pb-4 shrink-0">
-        <button onClick={onPrev} disabled={!hasPrev}
-          className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">← Prev</button>
-        <button onClick={onNext} disabled={!hasNext}
-          className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">Next →</button>
+        {/* Action buttons */}
+        {children && (
+          <div className="px-4 pb-2 pt-1 space-y-2">
+            {children}
+          </div>
+        )}
+
+        {/* Prev/Next nav */}
+        <div className="flex gap-2 px-4 pb-4">
+          <button onClick={onPrev} disabled={!hasPrev}
+            className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">← Prev</button>
+          <button onClick={onNext} disabled={!hasNext}
+            className="btn-ghost flex-1 disabled:opacity-30 py-2 rounded-xl text-sm font-medium">Next →</button>
+        </div>
       </div>
     </div>
   );
