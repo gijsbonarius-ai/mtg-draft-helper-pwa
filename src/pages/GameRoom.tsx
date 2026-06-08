@@ -3,9 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Chat from '../components/Chat';
 import { ZoomableCard } from '../components/CardZoom';
-import SpellEffectsModal from '../components/SpellEffectsModal';
-import { fetchOracleText, parseEffects } from '../lib/cardAutomation';
-import type { ParsedEffect } from '../lib/cardAutomation';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
@@ -545,7 +542,6 @@ export default function GameRoom() {
   const [acting, setActing] = useState(false);
   const [cardMenu, setCardMenu] = useState<BattlefieldCard | null>(null);
   const [handSelected, setHandSelected] = useState<number | null>(null);
-  const [spellEffects, setSpellEffects] = useState<{ effects: ParsedEffect[]; cardName: string } | null>(null);
   const [zoneView, setZoneView] = useState<{ player: PlayerKey; zone: 'graveyard' | 'exile' } | null>(null);
   const [tokenInput, setTokenInput] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(false);
@@ -1022,14 +1018,8 @@ export default function GameRoom() {
         >
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => {
-              const cardName = myState.hand[handSelected];
               push(playCard(state, me, handSelected));
               setHandSelected(null);
-              fetchOracleText(cardName).then(text => {
-                if (!text) return;
-                const effects = parseEffects(text);
-                if (effects.length > 0) setSpellEffects({ effects, cardName });
-              });
             }}
               className="btn-gold font-bold py-4 rounded-xl text-sm">
               ▶ Play
@@ -1040,17 +1030,6 @@ export default function GameRoom() {
             </button>
           </div>
         </CardDetailModal>
-      )}
-
-      {spellEffects && state && (
-        <SpellEffectsModal
-          cardName={spellEffects.cardName}
-          effects={spellEffects.effects}
-          state={state}
-          me={me as PlayerKey}
-          onApply={newState => { push(newState); setSpellEffects(null); }}
-          onSkip={() => setSpellEffects(null)}
-        />
       )}
 
       {/* Zone view modal */}
