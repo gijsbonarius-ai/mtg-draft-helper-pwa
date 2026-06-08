@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 function scryfallUrl(name: string, back = false) {
   return `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${back ? '&face=back' : ''}`;
@@ -25,7 +26,7 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
       style={TAP_STYLE}
@@ -63,7 +64,8 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
       <p className="mt-3 text-white text-sm font-semibold text-center max-w-xs" onClick={e => e.stopPropagation()}>
         {name}
       </p>
-    </div>
+    </div>,
+    document.body
   );
 }
 
