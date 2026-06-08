@@ -4,6 +4,9 @@ function scryfallUrl(name: string, back = false) {
   return `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${back ? '&face=back' : ''}`;
 }
 
+// touch-action: manipulation removes the 300ms tap delay on mobile without needing onTouchEnd hacks
+const TAP_STYLE: React.CSSProperties = { touchAction: 'manipulation' };
+
 // ── ZoomOverlay ──────────────────────────────────────────────────────────────
 
 interface ZoomOverlayProps {
@@ -14,13 +17,6 @@ interface ZoomOverlayProps {
 
 export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
   const [errored, setErrored] = useState(false);
-  // Block closing for a short window after mount so the opening touch doesn't immediately close
-  const canClose = useRef(false);
-  useEffect(() => {
-    const t = setTimeout(() => { canClose.current = true; }, 300);
-    return () => clearTimeout(t);
-  }, []);
-
   const src = scryfallUrl(name, face === 'back' && !errored);
 
   useEffect(() => {
@@ -31,17 +27,20 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center p-4"
-      onClick={() => { if (canClose.current) onClose(); }}
+      className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4"
+      style={TAP_STYLE}
+      onClick={onClose}
     >
+      {/* Close button */}
       <button
-        className="absolute top-4 right-4 w-14 h-14 flex items-center justify-center bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-full text-white text-2xl z-[101]"
-        aria-label="Close"
+        className="absolute top-4 right-4 w-14 h-14 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full text-white text-2xl z-[101]"
+        style={TAP_STYLE}
         onClick={e => { e.stopPropagation(); onClose(); }}
       >
         ✕
       </button>
 
+      {/* Card image — stopPropagation so tapping the card doesn't close */}
       {errored && face !== 'back' ? (
         <div
           className="bg-gray-800 border border-gray-600 rounded-xl flex items-center justify-center p-6"
@@ -61,7 +60,9 @@ export function ZoomOverlay({ name, face, onClose }: ZoomOverlayProps) {
         />
       )}
 
-      <p className="mt-3 text-white text-sm font-semibold text-center max-w-xs">{name}</p>
+      <p className="mt-3 text-white text-sm font-semibold text-center max-w-xs" onClick={e => e.stopPropagation()}>
+        {name}
+      </p>
     </div>
   );
 }
@@ -78,35 +79,30 @@ interface ZoomableCardProps {
 export function ZoomableCard({ name, face, className = '', style }: ZoomableCardProps) {
   const [zoomed, setZoomed] = useState(false);
   const [errored, setErrored] = useState(false);
-  const justClosed = useRef(false);
   const src = scryfallUrl(name, face === 'back' && !errored);
-
-  function open() {
-    if (!justClosed.current) setZoomed(true);
-  }
-
-  function close() {
-    setZoomed(false);
-    justClosed.current = true;
-    setTimeout(() => { justClosed.current = false; }, 400);
-  }
 
   return (
     <>
       {errored && face !== 'back' ? (
-        <div className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center cursor-pointer ${className}`} onClick={open}>
+        <div
+          className={`bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center cursor-pointer ${className}`}
+          style={{ ...style, ...TAP_STYLE }}
+          onClick={e => { e.stopPropagation(); setZoomed(true); }}
+        >
           <span className="text-gray-400 text-xs text-center p-2">{name}</span>
         </div>
       ) : (
-        <img src={src} alt={name} draggable={false}
+        <img
+          src={src}
+          alt={name}
+          draggable={false}
           className={`rounded-lg object-contain cursor-pointer ${className}`}
-          style={style}
+          style={{ ...style, ...TAP_STYLE }}
           onError={() => setErrored(true)}
-          onClick={open}
-          onTouchEnd={e => { e.preventDefault(); open(); }}
+          onClick={e => { e.stopPropagation(); setZoomed(true); }}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} face={face} onClose={close} />}
+      {zoomed && <ZoomOverlay name={name} face={face} onClose={() => setZoomed(false)} />}
     </>
   );
 }
@@ -127,46 +123,50 @@ export function LongPressZoomCard({ name, face, className = '', style, onClick }
   const src = scryfallUrl(name, face === 'back' && !errored);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didZoom = useRef(false);
-  const justClosed = useRef(false);
 
   function startPress() {
     didZoom.current = false;
     timer.current = setTimeout(() => { didZoom.current = true; setZoomed(true); }, 500);
   }
-  function cancelPress() { if (timer.current) clearTimeout(timer.current); }
-  function handleClick(e: React.MouseEvent) {
-    if (!didZoom.current && !justClosed.current) onClick?.(e);
+  function cancelPress() {
+    if (timer.current) clearTimeout(timer.current);
   }
-
-  function close() {
-    setZoomed(false);
-    didZoom.current = false;
-    justClosed.current = true;
-    setTimeout(() => { justClosed.current = false; }, 400);
+  function handleClick(e: React.MouseEvent) {
+    if (!didZoom.current) onClick?.(e);
   }
 
   const pressProps = {
-    onMouseDown: startPress, onMouseUp: cancelPress, onMouseLeave: cancelPress,
-    onTouchStart: startPress, onTouchEnd: cancelPress,
+    onMouseDown: startPress,
+    onMouseUp: cancelPress,
+    onMouseLeave: cancelPress,
+    onTouchStart: startPress,
+    onTouchEnd: cancelPress,
     onClick: handleClick,
   };
 
   return (
     <>
       {errored && face !== 'back' ? (
-        <div className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 cursor-pointer ${className}`} style={style} {...pressProps}>
+        <div
+          className={`bg-gray-800 border border-gray-600 rounded flex items-center justify-center p-1 cursor-pointer ${className}`}
+          style={{ ...style, ...TAP_STYLE }}
+          {...pressProps}
+        >
           <span className="text-gray-400 text-xs text-center leading-tight">{name}</span>
         </div>
       ) : (
-        <img src={src} alt={name} draggable={false}
+        <img
+          src={src}
+          alt={name}
+          draggable={false}
           className={`rounded object-contain cursor-pointer ${className}`}
-          style={style}
+          style={{ ...style, ...TAP_STYLE }}
           onError={() => setErrored(true)}
           onContextMenu={e => { e.preventDefault(); setZoomed(true); }}
           {...pressProps}
         />
       )}
-      {zoomed && <ZoomOverlay name={name} face={face} onClose={close} />}
+      {zoomed && <ZoomOverlay name={name} face={face} onClose={() => setZoomed(false)} />}
     </>
   );
 }
