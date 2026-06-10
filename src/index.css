@@ -3,146 +3,72 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --gold: #c9a227;
-    --gold-light: #e0b84c;
-    --gold-dim: rgba(201,162,39,0.15);
-    --bg-base: #0d0d12;
-    --bg-panel: #13131a;
-    --bg-raised: #1a1a24;
-    --border-subtle: rgba(201,162,39,0.18);
-    --border-mid: rgba(201,162,39,0.35);
-  }
-
   * { box-sizing: border-box; }
 
   body {
-    background-color: #0d0d12;
-    color: #e8e0d0;
+    background-color: #fffbf7;
+    color: #374151;
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, .font-display {
-    font-family: 'Cinzel', Georgia, serif;
+  h1, h2, h3, h4 {
+    font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700;
   }
 }
 
 @layer components {
-  /* Gold beveled button */
-  .btn-gold {
-    @apply relative inline-flex items-center justify-center font-semibold tracking-wide
-           transition-all duration-200 select-none cursor-pointer;
-    background: linear-gradient(180deg, #d4a83a 0%, #b8901e 60%, #a07c10 100%);
-    border: 1px solid #e0b84c;
-    color: #0d0d12;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.12) inset, 0 4px 16px rgba(201,162,39,0.25);
-    text-shadow: 0 1px 0 rgba(255,220,100,0.3);
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
+           bg-blossom-500 hover:bg-blossom-600 active:bg-blossom-700
+           text-white font-semibold text-sm transition-all duration-150
+           shadow-sm hover:shadow-glow-pink disabled:opacity-50 disabled:cursor-not-allowed;
   }
-  .btn-gold:hover {
-    background: linear-gradient(180deg, #e0c050 0%, #c99a28 60%, #b08018 100%);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 24px rgba(201,162,39,0.4), 0 0 20px rgba(201,162,39,0.2);
-  }
-  .btn-gold:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(201,162,39,0.2); }
-  .btn-gold:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
-  /* Ghost/outline button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
+           bg-blossom-50 hover:bg-blossom-100 active:bg-blossom-200
+           text-blossom-600 font-semibold text-sm transition-all duration-150
+           border border-blossom-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
   .btn-ghost {
-    @apply inline-flex items-center justify-center font-medium tracking-wide
-           transition-all duration-200 cursor-pointer;
-    background: transparent;
-    border: 1px solid var(--border-mid);
-    color: #c9a84c;
-    box-shadow: inset 0 0 0 0 rgba(201,162,39,0);
-  }
-  .btn-ghost:hover {
-    background: var(--gold-dim);
-    border-color: #c9a84c;
-    box-shadow: 0 0 12px rgba(201,162,39,0.15);
-  }
-  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* Dark panel */
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl
+           hover:bg-blossom-50 text-gray-600 hover:text-blossom-600
+           font-medium text-sm transition-all duration-150;
   }
 
-  /* Arena-style input */
-  .arena-input {
-    background: rgba(0,0,0,0.35);
-    border: 1px solid var(--border-subtle);
-    color: #e8e0d0;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .arena-input::placeholder { color: rgba(200,185,150,0.35); }
-  .arena-input:focus {
-    outline: none;
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201,162,39,0.12), 0 0 16px rgba(201,162,39,0.08);
+  .card {
+    @apply bg-white rounded-3xl shadow-card border border-gray-100;
   }
 
-  /* Card hover glow */
-  .card-hover {
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-  }
-  .card-hover:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.7), 0 0 16px rgba(201,162,39,0.3);
-  }
-}
-
-@layer utilities {
-  /* Battlefield zones */
-  .zone-felt {
-    background: radial-gradient(ellipse at 50% 0%, #1c3828 0%, #0d1e14 80%);
-    box-shadow: inset 0 2px 20px rgba(0,0,0,0.6);
-  }
-  .zone-opp {
-    background: radial-gradient(ellipse at 50% 100%, #1e1208 0%, #0c0c0c 70%);
-  }
-  .zone-hand {
-    background: linear-gradient(180deg, #0e1420 0%, #080c14 100%);
-    box-shadow: inset 0 4px 16px rgba(0,0,0,0.6);
-  }
-  .zone-grave {
-    background: radial-gradient(ellipse at center, #1e1204 0%, #0a0704 100%);
-  }
-  .zone-exile {
-    background: radial-gradient(ellipse at center, #1a0e2e 0%, #0c0818 100%);
+  .input {
+    @apply w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white
+           text-gray-800 placeholder-gray-400 text-sm
+           focus:outline-none focus:ring-2 focus:ring-blossom-300 focus:border-blossom-400
+           transition-all duration-150;
   }
 
-  /* Gold tints */
-  .text-gold { color: #c9a227; }
-  .text-gold-light { color: #e0b84c; }
-  .border-gold { border-color: rgba(201,162,39,0.35); }
-  .border-gold-bright { border-color: #c9a227; }
-  .bg-gold-dim { background: rgba(201,162,39,0.1); }
-
-  /* Mana colors */
-  .mana-white { color: #F9FAF4; }
-  .mana-blue  { color: #0E68AB; }
-  .mana-black { color: #a0a0a0; }
-  .mana-red   { color: #D3202A; }
-  .mana-green { color: #00733E; }
-
-  /* Utility glows */
-  .glow-gold { box-shadow: 0 0 20px rgba(201,162,39,0.3); }
-  .glow-gold-sm { box-shadow: 0 0 10px rgba(201,162,39,0.2); }
-
-  /* Divider with centre label */
-  .divider-gold {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+  .label {
+    @apply block text-sm font-semibold text-gray-700 mb-1.5;
   }
-  .divider-gold::before,
-  .divider-gold::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .section-title {
+    @apply text-lg font-bold text-gray-800 mb-4;
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center gap-0.5 py-2 px-3 rounded-2xl
+           text-gray-400 hover:text-blossom-500 hover:bg-blossom-50
+           transition-all duration-150 cursor-pointer text-xs font-semibold;
+  }
+
+  .nav-item.active {
+    @apply text-blossom-500 bg-blossom-50;
   }
 }

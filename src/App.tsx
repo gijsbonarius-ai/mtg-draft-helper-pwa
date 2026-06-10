@@ -1,20 +1,45 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import DraftRoom from './pages/DraftRoom';
-import DeckBuilder from './pages/DeckBuilder';
-import GameRoom from './pages/GameRoom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './hooks/useAuth';
+import { BabyProvider } from './hooks/useBaby';
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Pregnancy from './pages/Pregnancy';
+import Growth from './pages/Growth';
+import Diary from './pages/Diary';
+import Gallery from './pages/Gallery';
+import Settings from './pages/Settings';
 
-function App() {
+export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/draft/:roomCode" element={<DraftRoom />} />
-        <Route path="/deckbuild/:roomCode" element={<DeckBuilder />} />
-        <Route path="/game/:roomCode" element={<GameRoom />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BabyProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="pregnancy" element={<Pregnancy />} />
+              <Route path="growth" element={<Growth />} />
+              <Route path="diary" element={<Diary />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </BabyProvider>
+    </AuthProvider>
   );
 }
-
-export default App;
