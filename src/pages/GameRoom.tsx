@@ -8,7 +8,7 @@ import type { DraftState } from '../lib/types';
 import {
   initGame, drawOpeningHand, mulligan, keepHand,
   drawCard, playCard, discardCard, tapToggle, addCounter, untapAll, addStunCounter,
-  moveToGraveyard, returnToHand, exileCard, graveToHand,
+  moveToGraveyard, returnToHand, exileCard, graveToHand, exileToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
   toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones, transformCard,
   millCards, resolveScry,
@@ -229,7 +229,7 @@ function BattlefieldCard_({ card, isMe, onOpenMenu, oppCards = [] }: Battlefield
       {(card.blocking || blockingCard) && (
         <span className="absolute top-0 left-0 bg-red-700 text-white text-[10px] font-bold px-1 rounded leading-tight">⚔</span>
       )}
-      {(blockedBy || blockedBy) && (
+      {(blockedBy || targetedBy) && (
         <span className="absolute top-0 left-0 bg-orange-700 text-white text-[10px] font-bold px-1 rounded leading-tight">⚔</span>
       )}
 
@@ -480,8 +480,12 @@ function LifeCounter({ life, poison, name, isMe, onLife, onPoison }: {
       )}
       {poison > 0 && <span className="text-xs text-purple-400">☠{poison}</span>}
       {isMe && (
-        <button onClick={() => onPoison(1)}
-          className="btn-ghost text-xs text-purple-400 px-1 py-1">☠+</button>
+        <>
+          <button onClick={() => onPoison(-1)} disabled={poison <= 0}
+            className="btn-ghost text-xs text-purple-400 px-1 py-1 disabled:opacity-30">☠−</button>
+          <button onClick={() => onPoison(1)}
+            className="btn-ghost text-xs text-purple-400 px-1 py-1">☠+</button>
+        </>
       )}
     </div>
   );
@@ -577,9 +581,10 @@ export default function GameRoom() {
 
     if (game) { setState(game.state as GameState); setLoading(false); return; }
 
-    if (playerKey.current !== 'player1') {
+    if (playerKey.current === null || playerKey.current !== 'player1') {
       // Player 2 arrived before player 1 created the game session — retry after a delay
-      setTimeout(() => loadState(), 3000);
+      // (playerKey.current may be null on first render before localStorage is read)
+      if (playerKey.current !== null) setTimeout(() => loadState(), 3000);
       return;
     }
 
@@ -1105,7 +1110,7 @@ export default function GameRoom() {
             cards={state.players[zoneView.player][zoneView.zone]}
             isMe={isMyZone}
             zone={zoneView.zone}
-            onReturnToHand={isMyZone ? idx => push(graveToHand(state, me as PlayerKey, idx)) : undefined}
+            onReturnToHand={isMyZone ? idx => push(zoneView.zone === 'exile' ? exileToHand(state, me as PlayerKey, idx) : graveToHand(state, me as PlayerKey, idx)) : undefined}
             onToBattlefield={isMyZone ? idx => push(zoneToBattlefield(state, me as PlayerKey, zoneView.zone, idx)) : undefined}
             onSwapZone={isMyZone ? idx => push(swapZones(state, me as PlayerKey, zoneView.zone, idx)) : undefined}
             onClose={() => setZoneView(null)}

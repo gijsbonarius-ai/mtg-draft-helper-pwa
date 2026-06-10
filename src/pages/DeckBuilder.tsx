@@ -209,7 +209,8 @@ export default function DeckBuilder() {
   useEffect(() => {
     const myKey = playerKey.current;
     if (!state || !myKey || saving) return;
-    if (state.deckBuilds?.[myKey] && state.deckBuilds?.[myKey === 'player1' ? 'player2' : 'player1'])
+    const oppKey = myKey === 'player1' ? 'player2' : 'player1';
+    if (state.deckBuilds?.[myKey] && state.deckBuilds?.[oppKey])
       navigate(`/game/${roomCode}`);
   }, [state, roomCode, navigate, saving]);
 
@@ -238,7 +239,7 @@ export default function DeckBuilder() {
     return groups;
   })();
 
-  function addCard(name: string) { if (!deck.includes(name)) setDeck(p => [...p, name]); }
+  function addCard(name: string) { setDeck(p => [...p, name]); }
   function removeCard(name: string) { setDeck(p => { const i = p.indexOf(name); return i === -1 ? p : [...p.slice(0, i), ...p.slice(i + 1)]; }); }
   function adjustLand(name: string, d: number) { setLands(p => ({ ...p, [name]: Math.max(0, (p[name] ?? 0) + d) })); }
 
@@ -301,11 +302,17 @@ export default function DeckBuilder() {
           </div>
           <div className="flex-1 overflow-y-auto p-3">
             <div className="flex flex-wrap gap-2">
-              {myPicks.map((card, i) => (
-                <PoolCard key={i} name={card} inDeck={deck.includes(card)}
-                  onAdd={() => addCard(card)}
-                  onRemove={() => removeCard(card)} />
-              ))}
+              {myPicks.map((card, i) => {
+                // Count how many times this card has appeared in the pool up to this index
+                const poolCountUpToHere = myPicks.slice(0, i + 1).filter(c => c === card).length;
+                const deckCount = deck.filter(c => c === card).length;
+                const inDeck = deckCount >= poolCountUpToHere;
+                return (
+                  <PoolCard key={i} name={card} inDeck={inDeck}
+                    onAdd={() => addCard(card)}
+                    onRemove={() => removeCard(card)} />
+                );
+              })}
             </div>
           </div>
         </div>

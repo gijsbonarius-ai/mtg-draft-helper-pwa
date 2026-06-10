@@ -90,7 +90,9 @@ export function drawCard(state: GameState, player: PlayerKey): GameState {
   const s = clone(state);
   const p = s.players[player];
   if (p.library.length === 0) {
-    addLog(s, `${player} tried to draw but library is empty!`);
+    s.phase = 'ended';
+    s.winner = player === 'player1' ? 'player2' : 'player1';
+    addLog(s, `${player} tried to draw from an empty library and loses! ${s.winner} wins!`);
     return s;
   }
   p.hand.push(p.library.shift()!);
@@ -215,6 +217,15 @@ export function graveToHand(state: GameState, player: PlayerKey, idx: number): G
   const [card] = p.graveyard.splice(idx, 1);
   p.hand.push(card);
   addLog(s, `${card} returned from graveyard to ${player}'s hand.`);
+  return s;
+}
+
+export function exileToHand(state: GameState, player: PlayerKey, idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.exile.splice(idx, 1);
+  p.hand.push(card);
+  addLog(s, `${card} returned from exile to ${player}'s hand.`);
   return s;
 }
 
