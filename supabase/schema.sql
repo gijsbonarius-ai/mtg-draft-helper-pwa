@@ -71,28 +71,39 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION is_approved()
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('parent', 'viewer')
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('parent', 'viewer')
   );
-$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+$$;
 
 CREATE OR REPLACE FUNCTION is_parent()
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
   SELECT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'parent'
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'parent'
   );
-$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+$$;
 
 -- ============================================================
 -- PROFILES RLS POLICIES
 -- ============================================================
 
--- Users can read their own profile + all approved/parent profiles
+-- Users can read their own profile + all approved/parent profiles.
+-- Uses the is_approved() SECURITY DEFINER function (not an inline
+-- subquery on profiles) to avoid infinite RLS recursion.
 CREATE POLICY "profiles_select" ON profiles
   FOR SELECT USING (
-    auth.uid() = id
-    OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('parent','viewer'))
+    auth.uid() = id OR is_approved()
   );
 
 -- Users can insert their own profile (done via signUp)
