@@ -27,17 +27,29 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- A trigger creates the profile row whenever a new auth user is
 -- created. This works even when email confirmation is enabled
 -- (when the browser has no active session to insert the row itself).
+--
+-- The VERY FIRST user to register becomes a 'parent' automatically;
+-- everyone after that starts as 'pending' and must be approved.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_role TEXT;
 BEGIN
+  -- First registered account is the parent/owner; the rest are pending.
+  IF EXISTS (SELECT 1 FROM profiles) THEN
+    new_role := 'pending';
+  ELSE
+    new_role := 'parent';
+  END IF;
+
   INSERT INTO profiles (id, email, display_name, role)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
-    'pending'
+    new_role
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
