@@ -54,6 +54,7 @@ export interface DiaryEntry {
   title: string;
   content: string;
   is_private: boolean;
+  entry_date?: string;  // ISO date string — links the entry to a specific timeline day/week
   tags?: string[];
   created_by: string;
   created_at: string;

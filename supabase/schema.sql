@@ -136,14 +136,18 @@ CREATE POLICY "growth_delete" ON growth_entries FOR DELETE USING (is_parent());
 CREATE TABLE IF NOT EXISTS diary_entries (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   baby_id     UUID NOT NULL REFERENCES babies(id) ON DELETE CASCADE,
-  title       TEXT NOT NULL,
-  content     TEXT NOT NULL,
+  title       TEXT NOT NULL DEFAULT '',
+  content     TEXT NOT NULL DEFAULT '',
   is_private  BOOLEAN NOT NULL DEFAULT FALSE,
+  entry_date  DATE,          -- the timeline day/week this entry belongs to
   tags        TEXT[],
   created_by  UUID NOT NULL REFERENCES profiles(id),
   created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+-- Index for fast timeline lookups
+CREATE INDEX IF NOT EXISTS diary_entries_date_idx ON diary_entries (baby_id, entry_date);
 
 ALTER TABLE diary_entries ENABLE ROW LEVEL SECURITY;
 
