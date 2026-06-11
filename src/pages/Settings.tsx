@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import type { Profile } from '../lib/types';
 
 export default function Settings() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, previewingAsViewer, setPreviewingAsViewer } = useAuth();
   const { baby, refetch: refetchBaby } = useBaby();
   const navigate = useNavigate();
 
@@ -291,6 +291,16 @@ export default function Settings() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Preview as viewer (parents only) */}
+      {profile?.role === 'parent' && !previewingAsViewer && (
+        <button
+          onClick={() => setPreviewingAsViewer(true)}
+          className="btn-secondary w-full"
+        >
+          👁 Preview as viewer
+        </button>
       )}
 
       {/* Sign out */}

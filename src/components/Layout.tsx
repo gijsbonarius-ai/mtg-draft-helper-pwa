@@ -10,7 +10,7 @@ const NAV = [
 ];
 
 export default function Layout() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, previewingAsViewer, setPreviewingAsViewer } = useAuth();
   const { baby } = useBaby();
   const navigate = useNavigate();
 
@@ -36,6 +36,21 @@ export default function Layout() {
           </div>
         </div>
       </header>
+
+      {/* Preview-as-viewer banner */}
+      {previewingAsViewer && (
+        <div className="bg-powder-100 border-b border-powder-200 px-4 py-2 flex items-center justify-between">
+          <p className="text-powder-700 text-xs font-semibold">
+            👁 Previewing as viewer — this is what guests see
+          </p>
+          <button
+            onClick={() => setPreviewingAsViewer(false)}
+            className="text-xs text-powder-600 font-bold underline"
+          >
+            Exit preview
+          </button>
+        </div>
+      )}
 
       {/* Pending banner */}
       {profile?.role === 'pending' && (

@@ -8,6 +8,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  previewingAsViewer: boolean;
+  setPreviewingAsViewer: (v: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -19,8 +21,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [realProfile, setRealProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [previewingAsViewer, setPreviewingAsViewer] = useState(false);
+
+  // When previewing, override role to 'viewer' so every component sees the viewer experience
+  const profile = realProfile && previewingAsViewer
+    ? { ...realProfile, role: 'viewer' as const }
+    : realProfile;
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -28,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single();
-    if (data) setProfile(data as Profile);
+    if (data) setRealProfile(data as Profile);
   };
 
   const refreshProfile = async () => {
@@ -49,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
-        setProfile(null);
+        setRealProfile(null);
+        setPreviewingAsViewer(false);
       }
     });
 
@@ -73,11 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    setPreviewingAsViewer(false);
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, previewingAsViewer, setPreviewingAsViewer, signIn, signUp, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
