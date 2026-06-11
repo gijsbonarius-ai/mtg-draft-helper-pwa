@@ -4,7 +4,27 @@
 -- ============================================================
 
 -- ============================================================
+-- PROFILES (extends auth.users)
+-- Must be created first so the helper functions can reference it
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  display_name  TEXT NOT NULL,
+  email         TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (role IN ('parent', 'viewer', 'pending')),
+  avatar_url    TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  approved_at   TIMESTAMPTZ,
+  approved_by   UUID REFERENCES profiles(id)
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
 -- HELPER FUNCTIONS FOR RLS
+-- Defined after profiles table so the reference is valid
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION is_approved()
@@ -22,22 +42,8 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- ============================================================
--- PROFILES (extends auth.users)
+-- PROFILES RLS POLICIES
 -- ============================================================
-
-CREATE TABLE IF NOT EXISTS profiles (
-  id            UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  display_name  TEXT NOT NULL,
-  email         TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'pending'
-                  CHECK (role IN ('parent', 'viewer', 'pending')),
-  avatar_url    TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  approved_at   TIMESTAMPTZ,
-  approved_by   UUID REFERENCES profiles(id)
-);
-
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Users can read their own profile + all approved/parent profiles
 CREATE POLICY "profiles_select" ON profiles
@@ -139,19 +145,17 @@ CREATE TABLE IF NOT EXISTS diary_entries (
   title       TEXT NOT NULL DEFAULT '',
   content     TEXT NOT NULL DEFAULT '',
   is_private  BOOLEAN NOT NULL DEFAULT FALSE,
-  entry_date  DATE,          -- the timeline day/week this entry belongs to
+  entry_date  DATE,
   tags        TEXT[],
   created_by  UUID NOT NULL REFERENCES profiles(id),
   created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
--- Index for fast timeline lookups
 CREATE INDEX IF NOT EXISTS diary_entries_date_idx ON diary_entries (baby_id, entry_date);
 
 ALTER TABLE diary_entries ENABLE ROW LEVEL SECURITY;
 
--- Parents see all; viewers only see public entries
 CREATE POLICY "diary_select" ON diary_entries
   FOR SELECT USING (
     is_parent() OR (is_approved() AND is_private = FALSE)
@@ -161,7 +165,6 @@ CREATE POLICY "diary_insert" ON diary_entries FOR INSERT WITH CHECK (is_parent()
 CREATE POLICY "diary_update" ON diary_entries FOR UPDATE USING (is_parent());
 CREATE POLICY "diary_delete" ON diary_entries FOR DELETE USING (is_parent());
 
--- Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
@@ -227,16 +230,9 @@ CREATE POLICY "milestones_update" ON milestones FOR UPDATE USING (is_parent());
 CREATE POLICY "milestones_delete" ON milestones FOR DELETE USING (is_parent());
 
 -- ============================================================
--- STORAGE BUCKET
--- Run after creating the schema:
--- 1. Go to Supabase Dashboard > Storage
--- 2. Create a bucket named "photos" (public: true)
--- 3. Add the storage policies below
+-- STORAGE BUCKET POLICIES
+-- Run these AFTER creating the "photos" bucket in Storage tab
 -- ============================================================
-
--- Storage policies (run in SQL editor after creating the bucket):
--- INSERT INTO storage.buckets (id, name, public) VALUES ('photos', 'photos', true)
---   ON CONFLICT (id) DO NOTHING;
 
 -- CREATE POLICY "photos_storage_select" ON storage.objects
 --   FOR SELECT USING (bucket_id = 'photos');
