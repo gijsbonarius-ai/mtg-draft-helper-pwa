@@ -32,19 +32,23 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- everyone after that starts as 'pending' and must be approved.
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   new_role TEXT;
 BEGIN
   -- First registered account is the parent/owner; the rest are pending.
-  IF EXISTS (SELECT 1 FROM profiles) THEN
+  IF EXISTS (SELECT 1 FROM public.profiles) THEN
     new_role := 'pending';
   ELSE
     new_role := 'parent';
   END IF;
 
-  INSERT INTO profiles (id, email, display_name, role)
+  INSERT INTO public.profiles (id, email, display_name, role)
   VALUES (
     NEW.id,
     NEW.email,
@@ -54,7 +58,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
