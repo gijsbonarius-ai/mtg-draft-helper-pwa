@@ -12,7 +12,11 @@ import {
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
   toggleLandRow, setBlocking, setTargeting, zoneToBattlefield, swapZones, transformCard,
   millCards, resolveScry,
+  handToLibrary, libraryToHand, libraryToBattlefield, libraryToGraveyard,
+  moveLibraryCard, battlefieldToLibrary, shuffleLibrary,
 } from '../lib/gameLogic';
+import SpellEffectsModal from '../components/SpellEffectsModal';
+import { resolveEffects, type ParsedEffect } from '../lib/cardAutomation';
 
 const STEP_LABELS: Record<GameStep, string> = {
   untap: 'Untap', upkeep: 'Upkeep', draw: 'Draw',
@@ -565,6 +569,8 @@ export default function GameRoom() {
   const [scryCards_, setScryCards] = useState<string[] | null>(null);
   const [showMillModal, setShowMillModal] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [spellEffects, setSpellEffects] = useState<{ cardName: string; effects: ParsedEffect[] } | null>(null);
+  const [showLibrary, setShowLibrary] = useState(false);
   // Picker: 'block' | 'target' or null
   const [picker, setPicker] = useState<{ mode: 'block' | 'target'; forUid: string } | null>(null);
   const playerKey = useRef<PlayerKey | null>(null);
@@ -879,7 +885,7 @@ export default function GameRoom() {
                   onPoison={d => push(adjustPoison(state, me, d))}
                 />
                 <div className="flex gap-2 text-xs text-[#c9a227]/50">
-                  <span>📚{myState.library.length}</span>
+                  <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button>
                   <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
                     className="hover:text-gold active:text-gold-light py-1">💀{myState.graveyard.length}</button>
                   <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
@@ -905,7 +911,7 @@ export default function GameRoom() {
                 onPoison={d => push(adjustPoison(state, me, d))}
               />
               <div className="flex gap-3 text-xs text-[#c9a227]/50 mt-1.5">
-                <span>📚{myState.library.length}</span>
+                <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button>
                 <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
                   className="hover:text-gold">💀{myState.graveyard.length}</button>
                 <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
@@ -1012,6 +1018,8 @@ export default function GameRoom() {
               </div>
               <button onClick={() => { push(returnToHand(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="btn-ghost text-sm font-medium py-3 rounded-xl">↩ To Hand</button>
+              <button onClick={() => { push(battlefieldToLibrary(state, me, cardMenu.uid, 'top')); setCardMenu(null); }}
+                className="btn-ghost text-sm font-medium py-3 rounded-xl">📚 To Library</button>
               <button onClick={() => { push(moveToGraveyard(state, me, cardMenu.uid)); setCardMenu(null); }}
                 className="btn-ghost text-red-400 text-sm font-medium py-3 rounded-xl">💀 Graveyard</button>
               <button onClick={() => { push(toggleLandRow(state, me, cardMenu.uid)); setCardMenu(null); }}
@@ -1064,9 +1072,12 @@ export default function GameRoom() {
           onNext={() => setHandSelected(handSelected + 1)}
         >
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => {
+            <button onClick={async () => {
+              const cardName = myState.hand[handSelected];
               push(playCard(state, me, handSelected));
               setHandSelected(null);
+              const effects = await resolveEffects(cardName);
+              if (effects.length > 0) setSpellEffects({ cardName, effects });
             }}
               className="btn-gold font-bold py-4 rounded-xl text-sm">
               ▶ Play
@@ -1075,6 +1086,12 @@ export default function GameRoom() {
               className="btn-ghost text-red-400 font-bold py-4 rounded-xl text-sm">
               💀 Discard
             </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button onClick={() => { push(handToLibrary(state, me, handSelected, 'top')); setHandSelected(null); }}
+              className="btn-ghost text-xs font-medium py-3 rounded-xl">▲ To top of library</button>
+            <button onClick={() => { push(handToLibrary(state, me, handSelected, 'bottom')); setHandSelected(null); }}
+              className="btn-ghost text-xs font-medium py-3 rounded-xl">▼ To bottom of library</button>
           </div>
         </CardDetailModal>
       )}
@@ -1125,6 +1142,41 @@ export default function GameRoom() {
           items={getPickerItems()}
           onPick={handlePickerSelect}
           onCancel={() => setPicker(null)}
+        />
+      )}
+
+      {/* Spell effects helper — opens after playing a card that has effects */}
+      {spellEffects && (
+        <SpellEffectsModal
+          cardName={spellEffects.cardName}
+          effects={spellEffects.effects}
+          state={state}
+          me={me as PlayerKey}
+          onApply={s => {
+            push(s);
+            const scry = spellEffects.effects.find(e => e.type === 'scry');
+            setSpellEffects(null);
+            if (scry) setScryCards(s.players[me].library.slice(0, scry.amount ?? 1));
+          }}
+          onSkip={() => {
+            const scry = spellEffects.effects.find(e => e.type === 'scry');
+            setSpellEffects(null);
+            if (scry) setScryCards(state.players[me].library.slice(0, scry.amount ?? 1));
+          }}
+        />
+      )}
+
+      {/* Library — view / search / shuffle, move cards to and from it */}
+      {showLibrary && (
+        <LibraryModal
+          cards={myState.library}
+          onToHand={i => push(libraryToHand(state, me, i))}
+          onToBattlefield={i => push(libraryToBattlefield(state, me, i))}
+          onToTop={i => push(moveLibraryCard(state, me, i, 'top'))}
+          onToBottom={i => push(moveLibraryCard(state, me, i, 'bottom'))}
+          onToGraveyard={i => push(libraryToGraveyard(state, me, i))}
+          onShuffle={() => push(shuffleLibrary(state, me))}
+          onClose={() => setShowLibrary(false)}
         />
       )}
     </div>
@@ -1255,5 +1307,65 @@ function TokenInput({ tokenInput, setTokenInput, onCreate, onClose }: {
         Create
       </button>
     </>
+  );
+}
+
+// ── LibraryModal ───────────────────────────────────────────────────────────────
+
+function LibraryModal({ cards, onToHand, onToBattlefield, onToTop, onToBottom, onToGraveyard, onShuffle, onClose }: {
+  cards: string[];
+  onToHand: (i: number) => void;
+  onToBattlefield: (i: number) => void;
+  onToTop: (i: number) => void;
+  onToBottom: (i: number) => void;
+  onToGraveyard: (i: number) => void;
+  onShuffle: () => void;
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [query, setQuery] = useState('');
+  const filtered = cards
+    .map((name, i) => ({ name, i }))
+    .filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="panel bg-[#0d0d12] rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col p-4 border border-yellow-700/40"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-display text-gold font-bold text-lg">Library ({cards.length})</h3>
+          <button onClick={onClose} className="btn-ghost w-8 h-8 flex items-center justify-center rounded text-xl">✕</button>
+        </div>
+        <p className="text-xs text-[#c9a227]/50 mb-2">Top of the library is first. (Only you can search your own library.)</p>
+        <input
+          className="arena-input rounded-lg px-3 py-2 text-sm mb-2"
+          placeholder="Search…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <div className="overflow-y-auto flex-1 flex flex-col gap-1 pr-1">
+          {filtered.length === 0 && <span className="text-[#c9a227]/40 text-sm italic py-2">No cards</span>}
+          {filtered.map(({ name, i }) => (
+            <div key={i}>
+              <button
+                className={`w-full text-left text-sm px-3 py-2 rounded-lg ${selected === i ? 'bg-yellow-900/30 text-gold' : 'text-gray-200 hover:bg-white/5'}`}
+                onClick={() => setSelected(selected === i ? null : i)}>
+                {i === 0 && <span className="text-[#c9a227]/40 mr-1">▲top</span>}{name}
+              </button>
+              {selected === i && (
+                <div className="grid grid-cols-3 gap-1 px-2 py-1.5">
+                  <button onClick={() => { onToHand(i); setSelected(null); }} className="btn-ghost text-xs py-2 rounded">↩ Hand</button>
+                  <button onClick={() => { onToBattlefield(i); setSelected(null); }} className="btn-ghost text-xs py-2 rounded">▶ Play</button>
+                  <button onClick={() => { onToGraveyard(i); setSelected(null); }} className="btn-ghost text-red-400 text-xs py-2 rounded">💀 Grave</button>
+                  <button onClick={() => { onToTop(i); setSelected(null); }} className="btn-ghost text-xs py-2 rounded">▲ Top</button>
+                  <button onClick={() => { onToBottom(i); setSelected(null); }} className="btn-ghost text-xs py-2 rounded">▼ Bottom</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <button onClick={onShuffle} className="btn-gold font-bold py-3 rounded-xl text-sm mt-3">🔀 Shuffle Library</button>
+      </div>
+    </div>
   );
 }

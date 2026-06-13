@@ -1,3 +1,5 @@
+import precomputedEffects from './cardEffects.json';
+
 export type EffectTarget =
   | 'self'
   | 'opp'
@@ -9,10 +11,24 @@ export type EffectTarget =
   | 'choose';
 
 export interface ParsedEffect {
-  type: 'draw' | 'damage' | 'life_gain' | 'life_loss' | 'destroy_creature' | 'exile_creature' | 'plus_counter' | 'minus_counter' | 'mill';
+  type: 'draw' | 'damage' | 'life_gain' | 'life_loss' | 'destroy_creature' | 'exile_creature' | 'plus_counter' | 'minus_counter' | 'mill' | 'bounce_creature' | 'tap_creature' | 'poison' | 'destroy_all_creatures' | 'scry' | 'manual';
   amount?: number;
   target: EffectTarget;
   description: string;
+  /** Original oracle text — included for `manual` effects the engine can't auto-apply, so the player can resolve them by hand. */
+  oracle?: string;
+}
+
+/**
+ * Effects precomputed offline by `scripts/generateCardEffects.ts` (Claude reads
+ * each card's Scryfall oracle text once and emits a typed effect list), keyed by
+ * exact card name. Empty until the generator has been run.
+ */
+const PRECOMPUTED = precomputedEffects as Record<string, ParsedEffect[]>;
+
+/** Returns the precomputed effects for a card, or null if it hasn't been generated yet. */
+export function getPrecomputedEffects(cardName: string): ParsedEffect[] | null {
+  return PRECOMPUTED[cardName] ?? null;
 }
 
 const oracleCache = new Map<string, string>();
@@ -132,4 +148,16 @@ export function parseEffects(oracleText: string): ParsedEffect[] {
   }
 
   return effects;
+}
+
+/**
+ * Resolve a card's effects, preferring the precomputed Claude interpretations and
+ * falling back to the live Scryfall fetch + regex parser when a card hasn't been
+ * generated yet.
+ */
+export async function resolveEffects(cardName: string): Promise<ParsedEffect[]> {
+  const pre = getPrecomputedEffects(cardName);
+  if (pre) return pre;
+  const oracle = await fetchOracleText(cardName);
+  return oracle ? parseEffects(oracle) : [];
 }

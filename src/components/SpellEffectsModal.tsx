@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { GameState, PlayerKey } from '../lib/gameTypes';
 import type { ParsedEffect } from '../lib/cardAutomation';
-import { drawCard, adjustLife, addCounter, moveToGraveyard, exileCard } from '../lib/gameLogic';
+import { drawCard, adjustLife, addCounter, moveToGraveyard, exileCard, returnToHand, tapToggle, adjustPoison } from '../lib/gameLogic';
 
 interface Props {
   cardName: string;
@@ -37,6 +37,8 @@ export default function SpellEffectsModal({ cardName, effects, state, me, onAppl
   );
 
   if (effects.length === 0) return null;
+
+  const hasAuto = effects.some(e => e.type !== 'manual');
 
   function toggleCheck(i: number) {
     setChecked(prev => prev.map((v, idx) => (idx === i ? !v : v)));
@@ -133,6 +135,27 @@ export default function SpellEffectsModal({ cardName, effects, state, me, onAppl
             },
           },
         };
+      } else if (effect.type === 'bounce_creature') {
+        const uid = creatureTargets[i];
+        if (uid) {
+          const owner = allCreatures.find(c => c.uid === uid)?.owner;
+          if (owner) s = returnToHand(s, owner, uid);
+        }
+      } else if (effect.type === 'tap_creature') {
+        const uid = creatureTargets[i];
+        if (uid) {
+          const owner = allCreatures.find(c => c.uid === uid)?.owner;
+          const card = owner ? s.players[owner].battlefield.find(c => c.uid === uid) : undefined;
+          if (owner && card && !card.tapped) s = tapToggle(s, owner, uid);
+        }
+      } else if (effect.type === 'poison') {
+        s = adjustPoison(s, effect.target === 'self' ? me : opp, amount);
+      } else if (effect.type === 'destroy_all_creatures') {
+        (['player1', 'player2'] as PlayerKey[]).forEach(pk => {
+          s.players[pk].battlefield.filter(c => !c.isLand).map(c => c.uid).forEach(uid => {
+            s = moveToGraveyard(s, pk, uid);
+          });
+        });
       }
     });
 
@@ -145,11 +168,27 @@ export default function SpellEffectsModal({ cardName, effects, state, me, onAppl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="panel max-w-md w-full mx-4 bg-[#0d0d12] rounded-2xl p-6 shadow-2xl border border-yellow-700/40">
-        <h2 className="font-display text-gold font-bold text-xl mb-1">Auto-apply Effects</h2>
+        <h2 className="font-display text-gold font-bold text-xl mb-1">{hasAuto ? 'Auto-apply Effects' : 'Card Effects'}</h2>
         <p className="text-yellow-400 text-sm mb-4 font-semibold">{cardName}</p>
 
         <div className="flex flex-col gap-3 mb-6">
           {effects.map((effect, i) => {
+            if (effect.type === 'manual') {
+              return (
+                <div key={i} className="rounded-lg border border-yellow-700/30 bg-yellow-900/10 px-3 py-2">
+                  <p className="text-xs uppercase tracking-wide text-yellow-600 mb-1">Resolve manually</p>
+                  <p className="text-sm text-gray-200 whitespace-pre-line">{effect.oracle ?? effect.description}</p>
+                </div>
+              );
+            }
+            if (effect.type === 'scry') {
+              return (
+                <div key={i} className="rounded-lg border border-blue-700/30 bg-blue-900/10 px-3 py-2">
+                  <p className="text-sm text-blue-200">🔮 {effect.description || `Scry ${effect.amount ?? 1}`}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">You'll choose the order after applying.</p>
+                </div>
+              );
+            }
             const options = needsCreature(effect) ? getCreatureOptions(effect) : [];
             return (
               <div key={i} className="flex flex-col gap-1">
@@ -183,18 +222,20 @@ export default function SpellEffectsModal({ cardName, effects, state, me, onAppl
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={handleApply}
-            className="btn-gold font-bold py-3 rounded-xl text-sm"
-          >
-            Apply Selected
-          </button>
+        <div className={hasAuto ? 'grid grid-cols-2 gap-3' : ''}>
+          {hasAuto && (
+            <button
+              onClick={handleApply}
+              className="btn-gold font-bold py-3 rounded-xl text-sm"
+            >
+              Apply Selected
+            </button>
+          )}
           <button
             onClick={onSkip}
-            className="btn-ghost font-bold py-3 rounded-xl text-sm"
+            className="btn-ghost font-bold py-3 rounded-xl text-sm w-full"
           >
-            Skip All
+            {hasAuto ? 'Skip All' : 'Close'}
           </button>
         </div>
       </div>

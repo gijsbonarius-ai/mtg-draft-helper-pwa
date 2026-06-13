@@ -392,3 +392,85 @@ export function resolveScry(state: GameState, player: PlayerKey, keepOnTop: stri
   addLog(s, `${player} scryed ${total}.`);
   return s;
 }
+
+// ── Library manipulation ────────────────────────────────────────────────────
+
+export function handToLibrary(state: GameState, player: PlayerKey, handIdx: number, position: 'top' | 'bottom'): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.hand.splice(handIdx, 1);
+  if (card === undefined) return s;
+  if (position === 'top') p.library.unshift(card); else p.library.push(card);
+  addLog(s, `${player} put ${card} on ${position} of library.`);
+  return s;
+}
+
+export function libraryToHand(state: GameState, player: PlayerKey, idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.library.splice(idx, 1);
+  if (card === undefined) return s;
+  p.hand.push(card);
+  addLog(s, `${player} took ${card} from library to hand.`);
+  return s;
+}
+
+export function libraryToBattlefield(state: GameState, player: PlayerKey, idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [name] = p.library.splice(idx, 1);
+  if (name === undefined) return s;
+  p.battlefield.push({
+    uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name, tapped: false, counters: 0, stunCounters: 0, isToken: false, note: '',
+    isLand: detectLand(name), transformed: false,
+  });
+  addLog(s, `${name} → ${player}'s battlefield from library.`);
+  return s;
+}
+
+export function libraryToGraveyard(state: GameState, player: PlayerKey, idx: number): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.library.splice(idx, 1);
+  if (card === undefined) return s;
+  p.graveyard.push(card);
+  addLog(s, `${player} put ${card} from library into graveyard.`);
+  return s;
+}
+
+// Reorder a library card to the top or bottom (manual scry/surveil control).
+export function moveLibraryCard(state: GameState, player: PlayerKey, idx: number, position: 'top' | 'bottom'): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const [card] = p.library.splice(idx, 1);
+  if (card === undefined) return s;
+  if (position === 'top') p.library.unshift(card); else p.library.push(card);
+  addLog(s, `${player} moved ${card} to ${position} of library.`);
+  return s;
+}
+
+export function battlefieldToLibrary(state: GameState, player: PlayerKey, uid: string, position: 'top' | 'bottom'): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const idx = p.battlefield.findIndex(c => c.uid === uid);
+  if (idx < 0) return s;
+  const [card] = p.battlefield.splice(idx, 1);
+  clearReferences(s, uid);
+  if (!card.isToken) {
+    if (position === 'top') p.library.unshift(card.name); else p.library.push(card.name);
+  }
+  addLog(s, `${card.name} → ${position} of ${player}'s library.`);
+  return s;
+}
+
+export function shuffleLibrary(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  const lib = s.players[player].library;
+  for (let i = lib.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [lib[i], lib[j]] = [lib[j], lib[i]];
+  }
+  addLog(s, `${player} shuffled their library.`);
+  return s;
+}
