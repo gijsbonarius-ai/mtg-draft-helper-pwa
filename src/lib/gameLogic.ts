@@ -72,7 +72,8 @@ export function mulligan(state: GameState, player: PlayerKey): GameState {
   const p = s.players[player];
   p.library = shuffle([...p.library, ...p.hand]);
   p.hand = p.library.splice(0, Math.min(7, p.library.length));
-  p.mulligans = (p.mulligans ?? 0) + 1;
+  // Cap at 7: a London mulligan never bottoms more than a full hand (keep 0).
+  p.mulligans = Math.min((p.mulligans ?? 0) + 1, 7);
   addLog(s, `${player} mulliganed (London) — will put ${p.mulligans} on the bottom when keeping.`);
   return s;
 }
