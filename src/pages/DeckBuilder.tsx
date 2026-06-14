@@ -6,6 +6,20 @@ import type { DraftState, PlayerKey } from '../lib/types';
 
 const BASIC_LANDS = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
 
+// Work-in-progress deck saved locally during drafting (per room + player).
+function loadWip(roomCode?: string): { deck: string[]; lands: Record<string, number> } | null {
+  if (!roomCode) return null;
+  const mk = localStorage.getItem(`draft_player_${roomCode}`);
+  if (!mk) return null;
+  try {
+    const w = JSON.parse(localStorage.getItem(`deckwip_${roomCode}_${mk}`) || 'null');
+    if (w && Array.isArray(w.deck)) {
+      return { deck: w.deck as string[], lands: w.lands ?? { Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 } };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 interface CardData { name: string; cmc: number; type_line: string; }
 type CardGroup = 'Creatures' | 'Instants' | 'Sorceries' | 'Enchantments' | 'Artifacts' | 'Lands' | 'Other';
 const GROUP_ORDER: CardGroup[] = ['Creatures', 'Instants', 'Sorceries', 'Enchantments', 'Artifacts', 'Lands', 'Other'];
@@ -165,8 +179,8 @@ export default function DeckBuilder() {
   const [state, setState] = useState<DraftState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deck, setDeck] = useState<string[]>([]);
-  const [lands, setLands] = useState<Record<string, number>>({ Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 });
+  const [deck, setDeck] = useState<string[]>(() => loadWip(roomCode)?.deck ?? []);
+  const [lands, setLands] = useState<Record<string, number>>(() => loadWip(roomCode)?.lands ?? { Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 });
   const [target, setTarget] = useState<40 | 60>(60);
   const [cardData, setCardData] = useState<Map<string, CardData>>(new Map());
   const [dataLoading, setDataLoading] = useState(false);
@@ -214,6 +228,14 @@ export default function DeckBuilder() {
       navigate(`/game/${roomCode}`);
   }, [state, roomCode, navigate, saving]);
 
+  // Persist work-in-progress deck so it survives bouncing between draft and builder.
+  useEffect(() => {
+    if (!roomCode) return;
+    const mk = localStorage.getItem(`draft_player_${roomCode}`);
+    if (!mk) return;
+    localStorage.setItem(`deckwip_${roomCode}_${mk}`, JSON.stringify({ deck, lands }));
+  }, [deck, lands, roomCode]);
+
   const myKey = playerKey.current;
   const myPicks = myKey ? (state?.players[myKey]?.picks ?? []) : [];
   const iAmReady = myKey ? !!(state?.deckBuilds?.[myKey]) : false;
@@ -252,6 +274,7 @@ export default function DeckBuilder() {
       const { error: err } = await supabase.from('draft_sessions').update({ state: updated }).eq('room_code', roomCode);
       if (err) throw err;
       setState(updated);
+      localStorage.removeItem(`deckwip_${roomCode}_${myKey}`);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to save deck. Please try again.');
     } finally {
@@ -267,7 +290,13 @@ export default function DeckBuilder() {
 
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between shrink-0">
-        <span className="text-yellow-400 font-bold text-sm">Build Your Deck</span>
+        <div className="flex items-center gap-2">
+          {state.phase !== 'done' && (
+            <button onClick={() => navigate(`/draft/${roomCode}`)}
+              className="text-xs bg-gray-800 hover:bg-gray-700 text-yellow-400 px-3 py-1 rounded-lg font-medium">← Draft</button>
+          )}
+          <span className="text-yellow-400 font-bold text-sm">Build Your Deck</span>
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
             {([40, 60] as const).map(n => (
@@ -378,7 +407,13 @@ export default function DeckBuilder() {
 
           {/* Submit */}
           <div className="p-3 border-t border-gray-800 shrink-0">
-            {iAmReady ? (
+            {state.phase !== 'done' ? (
+              <div className="text-center space-y-1.5">
+                <p className="text-gray-400 text-xs">Saved automatically. Keep drafting and come back anytime — you can submit once the draft is finished.</p>
+                <button onClick={() => navigate(`/draft/${roomCode}`)}
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-yellow-400 font-bold py-3 rounded-xl text-sm">← Back to draft</button>
+              </div>
+            ) : iAmReady ? (
               <div className="text-center space-y-0.5">
                 <p className="text-green-400 font-semibold text-sm">✓ Deck submitted ({state.deckBuilds?.[myKey]?.length ?? 0} cards)</p>
                 <p className="text-gray-500 text-xs">{opponentReady ? 'Both ready — loading game…' : 'Waiting for opponent…'}</p>

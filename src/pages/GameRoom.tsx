@@ -6,7 +6,7 @@ import { ZoomableCard } from '../components/CardZoom';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
-  initGame, drawOpeningHand, mulligan, keepHand,
+  initGame, drawOpeningHand, mulligan, keepHand, keepWithBottom, toggleRevealHand,
   drawCard, playCard, discardCard, tapToggle, addCounter, untapAll, addStunCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand, exileToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
@@ -571,6 +571,7 @@ export default function GameRoom() {
   const [showLog, setShowLog] = useState(false);
   const [spellEffects, setSpellEffects] = useState<{ cardName: string; effects: ParsedEffect[] } | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [bottoming, setBottoming] = useState(false);
   // Picker: 'block' | 'target' or null
   const [picker, setPicker] = useState<{ mode: 'block' | 'target'; forUid: string } | null>(null);
   const playerKey = useRef<PlayerKey | null>(null);
@@ -775,14 +776,30 @@ export default function GameRoom() {
             <p className="text-sm text-[#c9a227]/50 font-display">Hand of {myState.hand.length} · Library: {myState.library.length}</p>
           )}
           {needsKeep && (
-            <div className="flex gap-3">
-              <button onClick={() => push(keepHand(state, me))}
-                className="btn-gold font-bold px-6 py-3 rounded-xl">Keep</button>
-              <button onClick={() => push(mulligan(state, me))}
-                className="btn-ghost font-bold px-6 py-3 rounded-xl">
-                Mulligan → {Math.max(myState.hand.length - 1, 1)}
-              </button>
-            </div>
+            <>
+              {(myState.mulligans ?? 0) > 0 && (
+                <p className="text-xs text-[#c9a227]/60 font-display">
+                  Mulligan #{myState.mulligans} — on keep you'll put {myState.mulligans} card{(myState.mulligans ?? 0) > 1 ? 's' : ''} on the bottom.
+                </p>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => {
+                  if ((myState.mulligans ?? 0) === 0) push(keepHand(state, me));
+                  else setBottoming(true);
+                }}
+                  className="btn-gold font-bold px-6 py-3 rounded-xl">Keep</button>
+                <button onClick={() => push(mulligan(state, me))}
+                  className="btn-ghost font-bold px-6 py-3 rounded-xl">Mulligan</button>
+              </div>
+            </>
+          )}
+          {bottoming && (
+            <MulliganBottomModal
+              hand={myState.hand}
+              count={myState.mulligans ?? 0}
+              onConfirm={indices => { push(keepWithBottom(state, me, indices)); setBottoming(false); }}
+              onCancel={() => setBottoming(false)}
+            />
           )}
           {myState.ready && !oppState.ready && (
             <p className="text-[#c9a227]/40 text-sm font-display">Waiting for {oppState.name || 'opponent'} to keep…</p>
@@ -817,7 +834,9 @@ export default function GameRoom() {
               </div>
               {oppState.hand.length > 0 && (
                 <div className="flex gap-1 px-3 pb-1 overflow-x-auto shrink-0">
-                  {oppState.hand.map((_, i) => <CardBack key={i} className="w-9 h-12 flex-shrink-0" />)}
+                  {oppState.revealedHand
+                    ? oppState.hand.map((c, i) => <ZoomableCard key={i} name={c} className="w-9 h-12 flex-shrink-0" />)
+                    : oppState.hand.map((_, i) => <CardBack key={i} className="w-9 h-12 flex-shrink-0" />)}
                 </div>
               )}
               <div className="flex-1 overflow-y-auto min-h-0">
@@ -885,7 +904,7 @@ export default function GameRoom() {
                   onPoison={d => push(adjustPoison(state, me, d))}
                 />
                 <div className="flex gap-2 text-xs text-[#c9a227]/50">
-                  <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button>
+                  <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button><button title="Reveal hand to opponent" onClick={() => push(toggleRevealHand(state, me))} className={`ml-1 py-1 ${myState.revealedHand ? 'text-gold' : 'hover:text-gold active:text-gold-light'}`}>{myState.revealedHand ? '🙈' : '👁'}</button>
                   <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
                     className="hover:text-gold active:text-gold-light py-1">💀{myState.graveyard.length}</button>
                   <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
@@ -911,7 +930,7 @@ export default function GameRoom() {
                 onPoison={d => push(adjustPoison(state, me, d))}
               />
               <div className="flex gap-3 text-xs text-[#c9a227]/50 mt-1.5">
-                <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button>
+                <button onClick={() => setShowLibrary(true)} className="hover:text-gold active:text-gold-light py-1">📚{myState.library.length}</button><button title="Reveal hand to opponent" onClick={() => push(toggleRevealHand(state, me))} className={`ml-1 py-1 ${myState.revealedHand ? 'text-gold' : 'hover:text-gold active:text-gold-light'}`}>{myState.revealedHand ? '🙈' : '👁'}</button>
                 <button onClick={() => setZoneView({ player: me, zone: 'graveyard' })}
                   className="hover:text-gold">💀{myState.graveyard.length}</button>
                 <button onClick={() => setZoneView({ player: me, zone: 'exile' })}
@@ -1348,9 +1367,10 @@ function LibraryModal({ cards, onToHand, onToBattlefield, onToTop, onToBottom, o
           {filtered.map(({ name, i }) => (
             <div key={i}>
               <button
-                className={`w-full text-left text-sm px-3 py-2 rounded-lg ${selected === i ? 'bg-yellow-900/30 text-gold' : 'text-gray-200 hover:bg-white/5'}`}
+                className={`w-full flex items-center gap-2 text-left text-sm px-2 py-1.5 rounded-lg ${selected === i ? 'bg-yellow-900/30 text-gold' : 'text-gray-200 hover:bg-white/5'}`}
                 onClick={() => setSelected(selected === i ? null : i)}>
-                {i === 0 && <span className="text-[#c9a227]/40 mr-1">▲top</span>}{name}
+                <PlainCardImg name={name} className="w-9 h-12 flex-shrink-0 rounded" />
+                <span className="flex-1">{i === 0 && <span className="text-[#c9a227]/40 mr-1">▲top</span>}{name}</span>
               </button>
               {selected === i && (
                 <div className="grid grid-cols-3 gap-1 px-2 py-1.5">
@@ -1365,6 +1385,42 @@ function LibraryModal({ cards, onToHand, onToBattlefield, onToTop, onToBottom, o
           ))}
         </div>
         <button onClick={onShuffle} className="btn-gold font-bold py-3 rounded-xl text-sm mt-3">🔀 Shuffle Library</button>
+      </div>
+    </div>
+  );
+}
+
+// ── MulliganBottomModal ──────────────────────────────────────────────────────
+// London mulligan: choose `count` cards from the kept hand to put on the bottom.
+
+function MulliganBottomModal({ hand, count, onConfirm, onCancel }: {
+  hand: string[]; count: number; onConfirm: (indices: number[]) => void; onCancel: () => void;
+}) {
+  const [sel, setSel] = useState<number[]>([]);
+  function toggle(i: number) {
+    setSel(prev => prev.includes(i) ? prev.filter(x => x !== i) : prev.length < count ? [...prev, i] : prev);
+  }
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="panel bg-[#0d0d12] rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col p-4 border border-yellow-700/40"
+        onClick={e => e.stopPropagation()}>
+        <h3 className="font-display text-gold font-bold text-lg mb-1">Put {count} on the bottom</h3>
+        <p className="text-xs text-[#c9a227]/60 mb-3">
+          You mulliganed {count} time{count !== 1 ? 's' : ''} — choose {count} card{count !== 1 ? 's' : ''} to put on the bottom of your library. Selected {sel.length}/{count}.
+        </p>
+        <div className="overflow-y-auto flex-1 flex flex-wrap gap-2 justify-center">
+          {hand.map((card, i) => (
+            <button key={i} onClick={() => toggle(i)} className="relative">
+              <PlainCardImg name={card} className={`w-20 h-28 rounded ${sel.includes(i) ? 'ring-2 ring-red-500' : ''}`} />
+              {sel.includes(i) && <span className="absolute top-1 right-1 bg-red-600 text-white text-[10px] font-bold rounded px-1">▼ bottom</span>}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <button onClick={() => onConfirm(sel)} disabled={sel.length !== count}
+            className="btn-gold font-bold py-3 rounded-xl text-sm disabled:opacity-40">Keep &amp; bottom {count}</button>
+          <button onClick={onCancel} className="btn-ghost font-bold py-3 rounded-xl text-sm">Cancel</button>
+        </div>
       </div>
     </div>
   );

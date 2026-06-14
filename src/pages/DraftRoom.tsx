@@ -124,7 +124,7 @@ function PileDetail({ cards }: { cards: string[] }) {
   );
 }
 
-function PicksList({ cards, name }: { cards: string[]; name: string }) {
+function PicksList({ cards, name, reveal = true }: { cards: string[]; name: string; reveal?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
@@ -139,9 +139,13 @@ function PicksList({ cards, name }: { cards: string[]; name: string }) {
         <div className="p-3 border-t border-gray-700 flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
           {cards.length === 0 ? (
             <p className="text-gray-600 text-sm">No picks yet</p>
-          ) : (
+          ) : reveal ? (
             cards.map((card, i) => (
               <ZoomableCard key={i} name={card} className="w-16 h-24 flex-shrink-0" />
+            ))
+          ) : (
+            cards.map((_, i) => (
+              <CardBack key={i} className="w-16 h-24 flex-shrink-0" />
             ))
           )}
         </div>
@@ -339,6 +343,18 @@ export default function DraftRoom() {
           </div>
         )}
 
+        {/* Build deck during the draft */}
+        {!isWaiting && !isDone && (
+          <div className="text-center">
+            <button
+              onClick={() => navigate(`/deckbuild/${roomCode}`)}
+              className="text-sm bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-yellow-400 px-4 py-2 rounded-lg font-medium"
+            >
+              🛠 Build your deck (in progress)
+            </button>
+          </div>
+        )}
+
         {/* Piles */}
         {!isWaiting && !isDone && (
           <div className="flex gap-3 justify-center flex-wrap">
@@ -368,12 +384,12 @@ export default function DraftRoom() {
             {myKey === 'player1' ? (
               <>
                 <PicksList cards={p1.picks} name={p1.name || 'You'} />
-                <PicksList cards={p2.picks} name={p2.name || 'Opponent'} />
+                <PicksList cards={p2.picks} name={p2.name || 'Opponent'} reveal={false} />
               </>
             ) : (
               <>
                 <PicksList cards={p2.picks} name={p2.name || 'You'} />
-                <PicksList cards={p1.picks} name={p1.name || 'Opponent'} />
+                <PicksList cards={p1.picks} name={p1.name || 'Opponent'} reveal={false} />
               </>
             )}
           </div>

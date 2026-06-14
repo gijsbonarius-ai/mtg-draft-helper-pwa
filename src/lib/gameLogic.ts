@@ -33,6 +33,8 @@ function mkPlayer(name: string, deck: string[]): PlayerGameState {
     graveyard: [],
     exile: [],
     ready: false,
+    mulligans: 0,
+    revealedHand: false,
   };
 }
 
@@ -63,13 +65,15 @@ export function drawOpeningHand(state: GameState, player: PlayerKey): GameState 
   return s;
 }
 
+// London mulligan: shuffle the hand back, draw a fresh 7, and remember how many
+// cards must be put on the bottom when the hand is kept (one per mulligan taken).
 export function mulligan(state: GameState, player: PlayerKey): GameState {
   const s = clone(state);
   const p = s.players[player];
   p.library = shuffle([...p.library, ...p.hand]);
-  const newCount = Math.max(p.hand.length - 1, 1);
-  p.hand = p.library.splice(0, newCount);
-  addLog(s, `${player} mulliganed to ${newCount}.`);
+  p.hand = p.library.splice(0, Math.min(7, p.library.length));
+  p.mulligans = (p.mulligans ?? 0) + 1;
+  addLog(s, `${player} mulliganed (London) — will put ${p.mulligans} on the bottom when keeping.`);
   return s;
 }
 
@@ -83,6 +87,33 @@ export function keepHand(state: GameState, player: PlayerKey): GameState {
   } else {
     addLog(s, `${player} kept their hand.`);
   }
+  return s;
+}
+
+// Keep after a London mulligan: put the chosen cards on the bottom, then ready up.
+export function keepWithBottom(state: GameState, player: PlayerKey, bottomIndices: number[]): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const set = new Set(bottomIndices);
+  const bottomed: string[] = [];
+  const kept: string[] = [];
+  p.hand.forEach((c, i) => { if (set.has(i)) bottomed.push(c); else kept.push(c); });
+  p.hand = kept;
+  p.library.push(...bottomed);
+  p.ready = true;
+  addLog(s, `${player} kept ${kept.length} and put ${bottomed.length} on the bottom.`);
+  if (s.players.player1.ready && s.players.player2.ready) {
+    s.phase = 'playing';
+    addLog(s, 'Both players kept. Game begins!');
+  }
+  return s;
+}
+
+export function toggleRevealHand(state: GameState, player: PlayerKey): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  p.revealedHand = !p.revealedHand;
+  addLog(s, `${player} ${p.revealedHand ? 'revealed their hand to the opponent' : 'hid their hand'}.`);
   return s;
 }
 
