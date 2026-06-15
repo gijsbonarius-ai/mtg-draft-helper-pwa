@@ -553,6 +553,12 @@ function ControlsStrip({ state, me, acting, onNext, onEndTurn, onDraw, onToken, 
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+const HISTORY_LIMIT = 10;
+// A state snapshot for the undo stack; drop the nested history so it isn't stored recursively.
+function snapshot(s: GameState): GameState {
+  return { ...s, history: undefined };
+}
+
 export default function GameRoom() {
   const { roomCode } = useParams<{ roomCode: string }>();
   const navigate = useNavigate();
@@ -625,12 +631,33 @@ export default function GameRoom() {
     if (!roomCode) return;
     setActing(true);
     try {
+      const history = state ? [...(state.history ?? []), snapshot(state)].slice(-HISTORY_LIMIT) : [];
+      const toWrite: GameState = { ...newState, history };
       const { error: err } = await supabase
-        .from('game_sessions').update({ state: newState }).eq('room_code', roomCode);
+        .from('game_sessions').update({ state: toWrite }).eq('room_code', roomCode);
       if (err) throw err;
-      setState(newState);
+      setState(toWrite);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Update failed');
+    } finally { setActing(false); }
+  }
+
+  // Undo the most recent action (reverts for both players). Useful when a spell
+  // is countered, or after a misclick — the app applies effects immediately and
+  // has no stack, so this is the way to take something back.
+  async function undo() {
+    if (!roomCode || !state?.history?.length) return;
+    setActing(true);
+    try {
+      const hist = [...state.history];
+      const prev = hist.pop()!;
+      const restored: GameState = { ...prev, history: hist };
+      const { error: err } = await supabase
+        .from('game_sessions').update({ state: restored }).eq('room_code', roomCode);
+      if (err) throw err;
+      setState(restored);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Undo failed');
     } finally { setActing(false); }
   }
 
@@ -731,6 +758,9 @@ export default function GameRoom() {
 
         <div className="flex items-center gap-2">
           <span className="text-[#c9a227]/40 text-xs hidden sm:block font-display">T{state.turn}</span>
+          <button onClick={undo} disabled={acting || !state.history?.length}
+            title="Undo the last action (e.g. a countered spell)"
+            className="btn-ghost text-xs py-1 px-2 rounded disabled:opacity-40">↩ Undo</button>
           <button onClick={() => setShowLog(v => !v)}
             className="btn-ghost text-xs py-1 px-1 rounded">Log</button>
         </div>

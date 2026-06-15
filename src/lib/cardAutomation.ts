@@ -11,10 +11,12 @@ export type EffectTarget =
   | 'choose';
 
 export interface ParsedEffect {
-  type: 'draw' | 'damage' | 'life_gain' | 'life_loss' | 'destroy_creature' | 'exile_creature' | 'plus_counter' | 'minus_counter' | 'mill' | 'bounce_creature' | 'tap_creature' | 'poison' | 'destroy_all_creatures' | 'scry' | 'manual';
+  type: 'draw' | 'damage' | 'life_gain' | 'life_loss' | 'destroy_creature' | 'exile_creature' | 'plus_counter' | 'minus_counter' | 'mill' | 'bounce_creature' | 'tap_creature' | 'poison' | 'destroy_all_creatures' | 'scry' | 'create_token' | 'manual';
   amount?: number;
   target: EffectTarget;
   description: string;
+  /** Token name for `create_token` effects (e.g. "Treasure", "1/1 Soldier"). */
+  token?: string;
   /** Original oracle text — included for `manual` effects the engine can't auto-apply, so the player can resolve them by hand. */
   oracle?: string;
 }

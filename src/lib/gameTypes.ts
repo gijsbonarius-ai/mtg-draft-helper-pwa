@@ -42,6 +42,7 @@ export interface GameState {
   };
   log: string[];
   winner?: PlayerKey;
+  history?: GameState[];   // capped snapshot stack powering Undo
 }
 
 export interface GameSession {

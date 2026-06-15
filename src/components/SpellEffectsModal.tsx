@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { GameState, PlayerKey } from '../lib/gameTypes';
 import type { ParsedEffect } from '../lib/cardAutomation';
-import { drawCard, adjustLife, addCounter, moveToGraveyard, exileCard, returnToHand, tapToggle, adjustPoison } from '../lib/gameLogic';
+import { drawCard, adjustLife, addCounter, moveToGraveyard, exileCard, returnToHand, tapToggle, adjustPoison, createToken } from '../lib/gameLogic';
 
 interface Props {
   cardName: string;
@@ -156,6 +156,9 @@ export default function SpellEffectsModal({ cardName, effects, state, me, onAppl
             s = moveToGraveyard(s, pk, uid);
           });
         });
+      } else if (effect.type === 'create_token') {
+        const name = effect.token ?? 'Token';
+        for (let j = 0; j < amount; j++) s = createToken(s, me, name);
       }
     });
 

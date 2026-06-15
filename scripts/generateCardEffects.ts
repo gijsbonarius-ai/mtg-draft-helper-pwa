@@ -45,6 +45,7 @@ Only model IMMEDIATE, ONE-SHOT effects that resolve when a spell is cast or a pe
 - poison       — a player gets poison counters. amount = number.
 - destroy_all_creatures — destroy ALL creatures (a board wipe / "destroy all creatures"). amount = null, target = all_players. Use ONLY for unconditional board wipes; if it's conditional ("creatures with power 4 or greater", "creatures you don't control"), use manual.
 - scry         — scry N (look at the top N cards and reorder). amount = N, target = self. Use only for the keyword "scry"; surveil and "look at the top" are manual.
+- create_token — create one or more tokens. amount = number of tokens, token = a short token name such as "Treasure", "Clue", "1/1 white Soldier", "2/2 Zombie". Use only for fixed/known tokens; for X tokens, copies of another permanent, or conditional tokens, use manual.
 - manual       — anything the engine cannot represent (see below).
 
 "target" must be one of:
@@ -80,7 +81,7 @@ const EFFECT_LIST_SCHEMA = {
               'draw', 'damage', 'life_gain', 'life_loss', 'destroy_creature',
               'exile_creature', 'plus_counter', 'minus_counter', 'mill',
               'bounce_creature', 'tap_creature', 'poison',
-              'destroy_all_creatures', 'scry', 'manual',
+              'destroy_all_creatures', 'scry', 'create_token', 'manual',
             ],
           },
           amount: { type: ['integer', 'null'] },
@@ -92,8 +93,9 @@ const EFFECT_LIST_SCHEMA = {
             ],
           },
           description: { type: 'string' },
+          token: { type: ['string', 'null'] },
         },
-        required: ['type', 'amount', 'target', 'description'],
+        required: ['type', 'amount', 'target', 'description', 'token'],
       },
     },
   },
@@ -181,6 +183,7 @@ async function interpret(client: Anthropic, cardName: string, oracle: string): P
   return parsed.effects.map(e => {
     const effect: ParsedEffect = { type: e.type, target: e.target, description: e.description };
     if (e.amount != null) effect.amount = e.amount;
+    if (e.token) effect.token = e.token;
     if (e.type === 'manual') effect.oracle = oracle;
     return effect;
   });
