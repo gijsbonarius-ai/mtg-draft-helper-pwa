@@ -188,6 +188,7 @@ export default function DeckBuilder() {
   const [gallery, setGallery] = useState<number | null>(null); // null=closed, number=startIdx
   const [deckCardSize, setDeckCardSize] = useState<'sm' | 'md' | 'lg'>('md');
   const playerKey = useRef<PlayerKey | null>(null);
+  const serverLoaded = useRef(false);
 
   useEffect(() => {
     if (!roomCode) return;
@@ -228,12 +229,43 @@ export default function DeckBuilder() {
       navigate(`/game/${roomCode}`);
   }, [state, roomCode, navigate, saving]);
 
-  // Persist work-in-progress deck so it survives bouncing between draft and builder.
+  // Persist work-in-progress deck locally (instant + offline cache).
   useEffect(() => {
     if (!roomCode) return;
     const mk = localStorage.getItem(`draft_player_${roomCode}`);
     if (!mk) return;
     localStorage.setItem(`deckwip_${roomCode}_${mk}`, JSON.stringify({ deck, lands }));
+  }, [deck, lands, roomCode]);
+
+  // Load server-synced WIP once the draft state arrives, so the deck follows you
+  // across devices. Runs once; later realtime updates don't clobber local edits.
+  useEffect(() => {
+    if (serverLoaded.current || !state) return;
+    serverLoaded.current = true;
+    const mk = (localStorage.getItem(`draft_player_${roomCode}`) as PlayerKey) || null;
+    const w = mk ? state.deckWIP?.[mk] : undefined;
+    if (w) {
+      setDeck(w.deck ?? []);
+      setLands(w.lands ?? { Plains: 0, Island: 0, Swamp: 0, Mountain: 0, Forest: 0 });
+    }
+  }, [state, roomCode]);
+
+  // Debounced cross-device sync of WIP. Read-modify-write so a concurrent pile
+  // pick is never clobbered (and pile actions deep-clone state, preserving WIP).
+  useEffect(() => {
+    if (!serverLoaded.current || !roomCode) return;
+    const mk = (localStorage.getItem(`draft_player_${roomCode}`) as PlayerKey) || null;
+    if (!mk) return;
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await supabase.from('draft_sessions').select('state').eq('room_code', roomCode).single();
+        const latest = data?.state as DraftState | undefined;
+        if (!latest) return;
+        const updated: DraftState = { ...latest, deckWIP: { ...latest.deckWIP, [mk]: { deck, lands } } };
+        await supabase.from('draft_sessions').update({ state: updated }).eq('room_code', roomCode);
+      } catch { /* ignore — local cache still holds the WIP */ }
+    }, 1000);
+    return () => clearTimeout(t);
   }, [deck, lands, roomCode]);
 
   const myKey = playerKey.current;

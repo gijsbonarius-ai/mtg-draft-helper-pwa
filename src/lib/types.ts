@@ -19,6 +19,10 @@ export interface DraftState {
     player1?: string[];
     player2?: string[];
   };
+  deckWIP?: {
+    player1?: { deck: string[]; lands: Record<string, number> };
+    player2?: { deck: string[]; lands: Record<string, number> };
+  };
 }
 
 export interface DraftSession {

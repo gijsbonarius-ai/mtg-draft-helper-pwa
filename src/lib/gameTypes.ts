@@ -27,7 +27,8 @@ export interface PlayerGameState {
   exile: string[];
   ready: boolean;
   mulligans?: number;       // London mulligan count — this many cards go to the bottom on keep
-  revealedHand?: boolean;   // when true, the opponent can see this player's hand
+  revealedHand?: boolean;   // when true, the opponent can see this player's whole hand
+  revealed?: string[];      // specific hand cards revealed to the opponent (by name)
 }
 
 export interface GameState {

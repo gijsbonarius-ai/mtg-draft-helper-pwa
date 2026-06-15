@@ -6,7 +6,7 @@ import { ZoomableCard } from '../components/CardZoom';
 import type { GameState, PlayerKey, BattlefieldCard, GameStep } from '../lib/gameTypes';
 import type { DraftState } from '../lib/types';
 import {
-  initGame, drawOpeningHand, mulligan, keepHand, keepWithBottom, toggleRevealHand,
+  initGame, drawOpeningHand, mulligan, keepHand, keepWithBottom, toggleRevealHand, toggleRevealCard,
   drawCard, playCard, discardCard, tapToggle, addCounter, untapAll, addStunCounter,
   moveToGraveyard, returnToHand, exileCard, graveToHand, exileToHand,
   createToken, adjustLife, adjustPoison, nextStep, endTurn, concede,
@@ -834,9 +834,11 @@ export default function GameRoom() {
               </div>
               {oppState.hand.length > 0 && (
                 <div className="flex gap-1 px-3 pb-1 overflow-x-auto shrink-0">
-                  {oppState.revealedHand
-                    ? oppState.hand.map((c, i) => <ZoomableCard key={i} name={c} className="w-9 h-12 flex-shrink-0" />)
-                    : oppState.hand.map((_, i) => <CardBack key={i} className="w-9 h-12 flex-shrink-0" />)}
+                  {oppState.hand.map((c, i) =>
+                    (oppState.revealedHand || oppState.revealed?.includes(c))
+                      ? <ZoomableCard key={i} name={c} className="w-9 h-12 flex-shrink-0" />
+                      : <CardBack key={i} className="w-9 h-12 flex-shrink-0" />
+                  )}
                 </div>
               )}
               <div className="flex-1 overflow-y-auto min-h-0">
@@ -1112,6 +1114,10 @@ export default function GameRoom() {
             <button onClick={() => { push(handToLibrary(state, me, handSelected, 'bottom')); setHandSelected(null); }}
               className="btn-ghost text-xs font-medium py-3 rounded-xl">▼ To bottom of library</button>
           </div>
+          <button onClick={() => push(toggleRevealCard(state, me, myState.hand[handSelected]))}
+            className={`w-full mt-2 text-xs font-medium py-3 rounded-xl ${myState.revealed?.includes(myState.hand[handSelected]) ? 'btn-gold' : 'btn-ghost'}`}>
+            {myState.revealed?.includes(myState.hand[handSelected]) ? '🙈 Hide this card from opponent' : '👁 Reveal this card to opponent'}
+          </button>
         </CardDetailModal>
       )}
 

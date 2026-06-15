@@ -35,6 +35,7 @@ function mkPlayer(name: string, deck: string[]): PlayerGameState {
     ready: false,
     mulligans: 0,
     revealedHand: false,
+    revealed: [],
   };
 }
 
@@ -115,6 +116,16 @@ export function toggleRevealHand(state: GameState, player: PlayerKey): GameState
   const p = s.players[player];
   p.revealedHand = !p.revealedHand;
   addLog(s, `${player} ${p.revealedHand ? 'revealed their hand to the opponent' : 'hid their hand'}.`);
+  return s;
+}
+
+// Reveal/unreveal a single hand card (by name) to the opponent.
+export function toggleRevealCard(state: GameState, player: PlayerKey, cardName: string): GameState {
+  const s = clone(state);
+  const p = s.players[player];
+  const list = p.revealed ?? [];
+  p.revealed = list.includes(cardName) ? list.filter(c => c !== cardName) : [...list, cardName];
+  addLog(s, `${player} ${p.revealed.includes(cardName) ? 'revealed' : 'hid'} ${cardName}.`);
   return s;
 }
 
