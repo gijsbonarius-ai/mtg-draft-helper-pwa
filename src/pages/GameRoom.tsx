@@ -1128,7 +1128,9 @@ export default function GameRoom() {
               push(playCard(state, me, handSelected));
               setHandSelected(null);
               const effects = await resolveEffects(cardName);
-              if (effects.length > 0) setSpellEffects({ cardName, effects });
+              // Only surface the helper when something is actually auto-applicable;
+              // if every effect is "manual", the player resolves it by hand with no popup.
+              if (effects.some(e => e.type !== 'manual')) setSpellEffects({ cardName, effects });
             }}
               className="btn-gold font-bold py-4 rounded-xl text-sm">
               ▶ Play
